@@ -89,7 +89,10 @@ fn graph_to_ir(graph: &PersistedWorkbenchGraph) -> Result<GraphIr, String> {
                 from,
                 to,
                 semantic_ref: edge.semantic_ref.clone(),
-                kind: edge.relation.clone(),
+                kind: format!(
+                    "{}|challengeable={}",
+                    edge.relation, edge.challengeable
+                ),
                 source_refs: edge.source_refs.clone(),
                 provenance_refs: edge.provenance_refs.clone(),
                 hidden: false,
