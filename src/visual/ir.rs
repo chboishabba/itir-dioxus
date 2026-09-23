@@ -55,6 +55,18 @@ pub enum VisualisationIr {
     Chart(ChartIr),
 }
 
+
+pub fn stable_visual_id(semantic_ref: &str) -> VisualObjectId {
+    // Deterministic FNV-1a. This is a visual identity projection only, never a
+    // canonical semantic digest or authority identifier.
+    let mut hash = 0xcbf29ce484222325u64;
+    for byte in semantic_ref.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    VisualObjectId(hash)
+}
+
 impl GraphIr {
     pub fn node(&self, id: VisualObjectId) -> Option<&VisualNode> {
         self.nodes.iter().find(|node| node.id == id)
