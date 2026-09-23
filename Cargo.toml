@@ -7,9 +7,10 @@ description = "Dioxus + wgpu operator workbench for the ITIR/SensibLaw suite"
 
 [features]
 default = ["desktop"]
-desktop = ["dioxus/desktop"]
+desktop = ["dioxus/desktop", "production-data"]
 web = ["dioxus/web"]
 gpu = ["dep:wgpu", "dep:pollster"]
+production-data = ["dep:sensiblaw-reader-model", "dep:sensiblaw-pg-source-store", "dep:sensiblaw-legal-runtime", "dep:postgres"]
 
 [dependencies]
 dioxus = { version = "0.7.10", features = ["router"] }
@@ -17,6 +18,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 wgpu = { version = "29.0.3", optional = true }
 pollster = { version = "0.4", optional = true }
+postgres = { version = "0.19", optional = true }
+sensiblaw-reader-model = { git = "https://github.com/chboishabba/slr", rev = "8940faa6557b6de8d90586335b6a62cdaef09e80", package = "sensiblaw-reader-model", optional = true }
+sensiblaw-pg-source-store = { git = "https://github.com/chboishabba/slr", rev = "8940faa6557b6de8d90586335b6a62cdaef09e80", package = "sensiblaw-pg-source-store", optional = true }
+sensiblaw-legal-runtime = { git = "https://github.com/chboishabba/slr", rev = "8940faa6557b6de8d90586335b6a62cdaef09e80", package = "sensiblaw-legal-runtime", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4"
