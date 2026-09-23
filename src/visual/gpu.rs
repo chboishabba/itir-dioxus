@@ -166,6 +166,11 @@ struct VertexOut {
     @builtin(position) position: vec4<f32>,
 };
 
+struct PickVertexOut {
+    @builtin(position) position: vec4<f32>,
+    @location(0) pick_id: u32,
+};
+
 @vertex
 fn node_vs(
     @location(0) center: vec2<f32>,
@@ -200,11 +205,37 @@ fn node_fs() -> @location(0) vec4<f32> {
 fn edge_fs() -> @location(0) vec4<f32> {
     return vec4<f32>(0.45, 0.45, 0.45, 1.0);
 }
+
+@vertex
+fn pick_vs(
+    @location(0) center: vec2<f32>,
+    @location(1) pick_id: u32,
+    @builtin(vertex_index) vertex_index: u32,
+) -> PickVertexOut {
+    var offsets = array<vec2<f32>, 6>(
+        vec2<f32>(-0.025, -0.025),
+        vec2<f32>( 0.025, -0.025),
+        vec2<f32>( 0.025,  0.025),
+        vec2<f32>(-0.025, -0.025),
+        vec2<f32>( 0.025,  0.025),
+        vec2<f32>(-0.025,  0.025),
+    );
+    var out: PickVertexOut;
+    out.position = vec4<f32>(center + offsets[vertex_index], 0.0, 1.0);
+    out.pick_id = pick_id;
+    return out;
+}
+
+@fragment
+fn pick_fs(in: PickVertexOut) -> @location(0) u32 {
+    return in.pick_id;
+}
 "#;
 
 pub struct GraphRenderer {
     node_pipeline: wgpu::RenderPipeline,
     edge_pipeline: wgpu::RenderPipeline,
+    pick_pipeline: wgpu::RenderPipeline,
 }
 
 impl GraphRenderer {
@@ -243,6 +274,50 @@ impl GraphRenderer {
                 targets: &[Some(wgpu::ColorTargetState {
                     format,
                     blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                ..Default::default()
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview_mask: None,
+            cache: None,
+        });
+
+        let pick_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("itir-proof-graph-pick-pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("pick_vs"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: 20,
+                    step_mode: wgpu::VertexStepMode::Instance,
+                    attributes: &[
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Float32x2,
+                            offset: 0,
+                            shader_location: 0,
+                        },
+                        wgpu::VertexAttribute {
+                            format: wgpu::VertexFormat::Uint32,
+                            offset: 16,
+                            shader_location: 1,
+                        },
+                    ],
+                }],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("pick_fs"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: wgpu::TextureFormat::R32Uint,
+                    blend: None,
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
@@ -296,6 +371,19 @@ impl GraphRenderer {
         Self {
             node_pipeline,
             edge_pipeline,
+            pick_pipeline,
+        }
+    }
+
+    pub fn draw_pick<'pass>(
+        &'pass self,
+        pass: &mut wgpu::RenderPass<'pass>,
+        buffers: &'pass GraphGpuBuffers,
+    ) {
+        if buffers.node_vertex_count > 0 {
+            pass.set_pipeline(&self.pick_pipeline);
+            pass.set_vertex_buffer(0, buffers.node_buffer.slice(..));
+            pass.draw(0..6, 0..buffers.node_vertex_count);
         }
     }
 
