@@ -65,6 +65,37 @@ impl GraphIr {
     }
 }
 
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VisualObjectInspection {
+    pub object_id: VisualObjectId,
+    pub semantic_ref: String,
+    pub kind: String,
+    pub source_refs: Vec<String>,
+    pub provenance_refs: Vec<String>,
+}
+
+impl GraphIr {
+    pub fn inspect_object(&self, id: VisualObjectId) -> Option<VisualObjectInspection> {
+        if let Some(node) = self.node(id) {
+            return Some(VisualObjectInspection {
+                object_id: node.id,
+                semantic_ref: node.semantic_ref.clone(),
+                kind: node.kind.clone(),
+                source_refs: node.source_refs.clone(),
+                provenance_refs: node.provenance_refs.clone(),
+            });
+        }
+        self.edge(id).map(|edge| VisualObjectInspection {
+            object_id: edge.id,
+            semantic_ref: edge.semantic_ref.clone(),
+            kind: edge.kind.clone(),
+            source_refs: edge.source_refs.clone(),
+            provenance_refs: edge.provenance_refs.clone(),
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -122,5 +153,31 @@ mod tests {
         };
         assert!(graph.node(VisualObjectId(9)).is_some());
         assert!(graph.node(VisualObjectId(9)).unwrap().hidden);
+    }
+
+    #[test]
+    fn selected_object_reopens_semantic_source_and_provenance_refs() {
+        let graph = GraphIr {
+            graph_ref: "graph:inspect".into(),
+            derived_only: true,
+            challengeable: true,
+            nodes: vec![VisualNode {
+                id: VisualObjectId(42),
+                semantic_ref: "semantic:authority:42".into(),
+                kind: "authority_receipt".into(),
+                label: "Authority".into(),
+                source_refs: vec!["source:judgment:42".into()],
+                provenance_refs: vec!["receipt:authority:42".into()],
+                hidden: false,
+                x: 0.0,
+                y: 0.0,
+            }],
+            edges: vec![],
+        };
+
+        let detail = graph.inspect_object(VisualObjectId(42)).unwrap();
+        assert_eq!(detail.semantic_ref, "semantic:authority:42");
+        assert_eq!(detail.source_refs, vec!["source:judgment:42"]);
+        assert_eq!(detail.provenance_refs, vec!["receipt:authority:42"]);
     }
 }
