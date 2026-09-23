@@ -223,6 +223,145 @@ pub fn compare_graph_ir(
     }
 }
 
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ComparativeProofTopology {
+    pub comparison_ref: String,
+    pub before: GraphIr,
+    pub after: GraphIr,
+    pub delta: GraphIr,
+    pub comparative: ComparativeGraphIr,
+    pub creates_semantic_authority: bool,
+    pub creates_claim_truth: bool,
+}
+
+fn class_kind(class: ComparativeVisualClass, semantic_kind: &str) -> String {
+    let class_ref = match class {
+        ComparativeVisualClass::Shared => "shared",
+        ComparativeVisualClass::LeftOnly => "left-only",
+        ComparativeVisualClass::RightOnly => "right-only",
+        ComparativeVisualClass::Changed => "changed",
+    };
+    format!("comparative:{class_ref}:{semantic_kind}")
+}
+
+pub fn comparative_proof_topology(
+    comparison_ref: impl Into<String>,
+    left: &GraphIr,
+    right: &GraphIr,
+) -> ComparativeProofTopology {
+    let comparison_ref = comparison_ref.into();
+    let comparative = compare_graph_ir(comparison_ref.clone(), left, right);
+
+    let mut left_node_by_semantic = BTreeMap::new();
+    left_node_by_semantic.extend(
+        left.nodes
+            .iter()
+            .map(|node| (node.semantic_ref.clone(), node.clone())),
+    );
+    let mut right_node_by_semantic = BTreeMap::new();
+    right_node_by_semantic.extend(
+        right
+            .nodes
+            .iter()
+            .map(|node| (node.semantic_ref.clone(), node.clone())),
+    );
+
+    let mut delta_nodes = Vec::new();
+    let mut delta_id_by_semantic = BTreeMap::new();
+    for object in &comparative.objects {
+        if object.class == ComparativeVisualClass::Shared {
+            continue;
+        }
+        let source_node = right_node_by_semantic
+            .get(&object.semantic_ref)
+            .or_else(|| left_node_by_semantic.get(&object.semantic_ref));
+        let Some(source_node) = source_node else {
+            // Edge-only comparison objects are represented when both endpoint
+            // nodes survive into the delta projection below.
+            continue;
+        };
+        let mut node = source_node.clone();
+        node.kind = class_kind(object.class, &source_node.kind);
+        node.source_refs = object.source_refs.clone();
+        node.provenance_refs = object.provenance_refs.clone();
+        delta_id_by_semantic.insert(object.semantic_ref.clone(), node.id);
+        delta_nodes.push(node);
+    }
+
+    let left_edge_by_semantic = left
+        .edges
+        .iter()
+        .map(|edge| (edge.semantic_ref.clone(), edge))
+        .collect::<BTreeMap<_, _>>();
+    let right_edge_by_semantic = right
+        .edges
+        .iter()
+        .map(|edge| (edge.semantic_ref.clone(), edge))
+        .collect::<BTreeMap<_, _>>();
+
+    let mut delta_edges = Vec::new();
+    for object in &comparative.objects {
+        if object.class == ComparativeVisualClass::Shared {
+            continue;
+        }
+        let source_edge = right_edge_by_semantic
+            .get(&object.semantic_ref)
+            .copied()
+            .or_else(|| left_edge_by_semantic.get(&object.semantic_ref).copied());
+        let Some(source_edge) = source_edge else {
+            continue;
+        };
+
+        let source_from_semantic = left
+            .node(source_edge.from)
+            .or_else(|| right.node(source_edge.from))
+            .map(|node| node.semantic_ref.as_str());
+        let source_to_semantic = left
+            .node(source_edge.to)
+            .or_else(|| right.node(source_edge.to))
+            .map(|node| node.semantic_ref.as_str());
+
+        let (Some(from_semantic), Some(to_semantic)) =
+            (source_from_semantic, source_to_semantic)
+        else {
+            continue;
+        };
+        let (Some(from), Some(to)) = (
+            delta_id_by_semantic.get(from_semantic).copied(),
+            delta_id_by_semantic.get(to_semantic).copied(),
+        ) else {
+            continue;
+        };
+
+        let mut edge = source_edge.clone();
+        edge.from = from;
+        edge.to = to;
+        edge.kind = class_kind(object.class, &source_edge.kind);
+        edge.source_refs = object.source_refs.clone();
+        edge.provenance_refs = object.provenance_refs.clone();
+        delta_edges.push(edge);
+    }
+
+    let delta = GraphIr {
+        graph_ref: format!("{}:delta", comparison_ref),
+        derived_only: true,
+        challengeable: left.challengeable || right.challengeable,
+        nodes: delta_nodes,
+        edges: delta_edges,
+    };
+
+    ComparativeProofTopology {
+        comparison_ref,
+        before: left.clone(),
+        after: right.clone(),
+        delta,
+        comparative,
+        creates_semantic_authority: false,
+        creates_claim_truth: false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -239,6 +378,43 @@ mod tests {
             x: 0.0,
             y: 0.0,
         }
+    }
+
+    #[test]
+    fn proof_topology_exposes_before_after_and_delta_without_rewriting_inputs() {
+        let left = GraphIr {
+            graph_ref: "graph:left".into(),
+            derived_only: true,
+            challengeable: true,
+            nodes: vec![
+                node(1, "semantic:shared", "proposition"),
+                node(2, "semantic:defeater", "defeater"),
+            ],
+            edges: vec![],
+        };
+        let right = GraphIr {
+            graph_ref: "graph:right".into(),
+            derived_only: true,
+            challengeable: true,
+            nodes: vec![
+                node(10, "semantic:shared", "proposition"),
+                node(20, "semantic:counter", "counter-defeater"),
+            ],
+            edges: vec![],
+        };
+
+        let topology = comparative_proof_topology("comparison:pabai", &left, &right);
+
+        assert_eq!(topology.before, left);
+        assert_eq!(topology.after, right);
+        assert_eq!(topology.delta.nodes.len(), 2);
+        assert!(topology
+            .delta
+            .nodes
+            .iter()
+            .all(|node| node.kind.starts_with("comparative:")));
+        assert!(!topology.creates_semantic_authority);
+        assert!(!topology.creates_claim_truth);
     }
 
     #[test]
