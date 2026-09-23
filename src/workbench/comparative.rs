@@ -111,6 +111,39 @@ impl ComparativeWorkbenchReadModel {
     }
 }
 
+
+fn apply_typed_answer_change_emphasis(
+    topology: &mut ComparativeProofTopology,
+    overlay: &ComparativeExplanationOverlay,
+) {
+    for node in &mut topology.delta.nodes {
+        let Some(annotation) = overlay.typed_change_annotations.get(&node.semantic_ref) else {
+            continue;
+        };
+        if !annotation.answer_changing {
+            continue;
+        }
+        node.kind = format!(
+            "answer-changing:{:?}:{}",
+            annotation.layer,
+            node.kind
+        );
+    }
+    for edge in &mut topology.delta.edges {
+        let Some(annotation) = overlay.typed_change_annotations.get(&edge.semantic_ref) else {
+            continue;
+        };
+        if !annotation.answer_changing {
+            continue;
+        }
+        edge.kind = format!(
+            "answer-changing:{:?}:{}",
+            annotation.layer,
+            edge.kind
+        );
+    }
+}
+
 pub fn comparative_workbench_read_model(
     comparison_ref: impl Into<String>,
     left: &GraphIr,
@@ -118,8 +151,10 @@ pub fn comparative_workbench_read_model(
     selectors: ComparativeSelectors,
     explanation_overlay: ComparativeExplanationOverlay,
 ) -> ComparativeWorkbenchReadModel {
+    let mut topology = comparative_proof_topology(comparison_ref, left, right);
+    apply_typed_answer_change_emphasis(&mut topology, &explanation_overlay);
     ComparativeWorkbenchReadModel {
-        topology: comparative_proof_topology(comparison_ref, left, right),
+        topology,
         selectors,
         explanation_overlay,
         candidate_only: true,
@@ -335,6 +370,67 @@ mod tests {
         );
         assert!(!model.explanation_overlay.creates_semantic_authority);
         assert!(!model.explanation_overlay.creates_claim_truth);
+    }
+
+
+    #[test]
+    fn typed_answer_changing_annotation_emphasizes_delta_without_reclassifying_semantics() {
+        let left = graph(
+            "graph:left-typed-emphasis",
+            vec![node(1, "semantic:D", "defeater")],
+        );
+        let mut right_d = node(9, "semantic:D", "defeater");
+        right_d.provenance_refs = vec!["receipt:new-D".into()];
+        let right = graph("graph:right-typed-emphasis", vec![right_d]);
+
+        let model = comparative_workbench_read_model(
+            "comparison:typed-emphasis",
+            &left,
+            &right,
+            ComparativeSelectors {
+                left_ref: "w0".into(),
+                right_ref: "w1".into(),
+                query_ref: None,
+                consumer_ref: None,
+                as_at_ref: None,
+                scope_ref: None,
+            },
+            ComparativeExplanationOverlay {
+                typed_change_annotations: BTreeMap::from([(
+                    "semantic:D".into(),
+                    ComparativePresentationAnnotation {
+                        semantic_ref: "semantic:D".into(),
+                        layer: ComparativePresentationChangeLayer::Applicability,
+                        justification_refs: vec!["receipt:reviewed-D".into()],
+                        explanation_ref: Some("reviewed defeater blocks route".into()),
+                        answer_changing: true,
+                    },
+                )]),
+                change_layer_by_semantic_ref: BTreeMap::new(),
+                explanation_by_semantic_ref: BTreeMap::new(),
+                answer_changing_semantic_refs: BTreeSet::from(["semantic:D".into()]),
+                unresolved_semantic_refs: BTreeSet::new(),
+                creates_semantic_authority: false,
+                creates_claim_truth: false,
+            },
+        );
+
+        let delta = model
+            .topology
+            .delta
+            .nodes
+            .iter()
+            .find(|node| node.semantic_ref == "semantic:D")
+            .unwrap();
+        assert!(delta.kind.starts_with("answer-changing:Applicability:"));
+        assert!(model
+            .topology
+            .comparative
+            .changed_semantic_refs
+            .contains("semantic:D"));
+        assert_eq!(delta.semantic_ref, "semantic:D");
+        assert!(!model.creates_semantic_authority);
+        assert!(!model.creates_claim_truth);
     }
 
     #[test]
