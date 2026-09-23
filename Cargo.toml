@@ -35,3 +35,8 @@ required-features = ["gpu"]
 name = "m11_comparative_gpu_receipt"
 path = "examples/m11_comparative_gpu_receipt.rs"
 required-features = ["gpu"]
+
+[[example]]
+name = "m11_postgres_comparative_workbench"
+path = "examples/m11_postgres_comparative_workbench.rs"
+required-features = ["production-data"]
