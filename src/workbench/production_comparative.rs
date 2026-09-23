@@ -12,8 +12,8 @@ use sensiblaw_pg_source_store::{
     load_database_config, load_persisted_workbench_projection,
 };
 use sensiblaw_reader_model::{
-    ComparativeWorkbenchProjection, PersistedWorkbenchGraph,
-    ThreeWayComparativeWorkbenchProjection,
+    ComparativeChangeLayer as ReaderChangeLayer, ComparativeWorkbenchProjection,
+    PersistedWorkbenchGraph, ThreeWayComparativeWorkbenchProjection,
 };
 
 use crate::visual::{
@@ -25,10 +25,31 @@ use super::{
     comparative::{
         comparative_workbench_read_model,
         three_way_comparative_sequence_with_overlays,
-        ComparativeExplanationOverlay, ComparativeSelectors,
+        ComparativeExplanationOverlay, ComparativePresentationAnnotation,
+        ComparativePresentationChangeLayer, ComparativeSelectors,
         ComparativeWorkbenchReadModel, ThreeWayComparativeSequence,
     },
 };
+
+
+fn presentation_layer(layer: ReaderChangeLayer) -> ComparativePresentationChangeLayer {
+    match layer {
+        ReaderChangeLayer::World => ComparativePresentationChangeLayer::World,
+        ReaderChangeLayer::WorldEvidence => ComparativePresentationChangeLayer::WorldEvidence,
+        ReaderChangeLayer::Observation => ComparativePresentationChangeLayer::Observation,
+        ReaderChangeLayer::Representation => ComparativePresentationChangeLayer::Representation,
+        ReaderChangeLayer::Theory => ComparativePresentationChangeLayer::Theory,
+        ReaderChangeLayer::Belief => ComparativePresentationChangeLayer::Belief,
+        ReaderChangeLayer::ConsumerProjection => {
+            ComparativePresentationChangeLayer::ConsumerProjection
+        }
+        ReaderChangeLayer::Review => ComparativePresentationChangeLayer::Review,
+        ReaderChangeLayer::Scope => ComparativePresentationChangeLayer::Scope,
+        ReaderChangeLayer::Applicability => ComparativePresentationChangeLayer::Applicability,
+        ReaderChangeLayer::ProofOutcome => ComparativePresentationChangeLayer::ProofOutcome,
+        ReaderChangeLayer::ResidualOutcome => ComparativePresentationChangeLayer::ResidualOutcome,
+    }
+}
 
 fn graph_to_ir(graph: &PersistedWorkbenchGraph) -> Result<GraphIr, String> {
     let mut id_by_ref = BTreeMap::<String, VisualObjectId>::new();
@@ -112,7 +133,25 @@ fn graph_to_ir(graph: &PersistedWorkbenchGraph) -> Result<GraphIr, String> {
 fn overlay_from_typed(
     projection: &ComparativeWorkbenchProjection,
 ) -> ComparativeExplanationOverlay {
+    let typed_change_annotations = projection
+        .change_annotations
+        .iter()
+        .map(|annotation| {
+            (
+                annotation.semantic_ref.clone(),
+                ComparativePresentationAnnotation {
+                    semantic_ref: annotation.semantic_ref.clone(),
+                    layer: presentation_layer(annotation.layer),
+                    justification_refs: annotation.justification_refs.clone(),
+                    explanation_ref: annotation.explanation_ref.clone(),
+                    answer_changing: annotation.answer_changing,
+                },
+            )
+        })
+        .collect();
+
     ComparativeExplanationOverlay {
+        typed_change_annotations,
         change_layer_by_semantic_ref: projection.change_layer_by_semantic_ref.clone(),
         explanation_by_semantic_ref: projection.explanation_by_semantic_ref.clone(),
         answer_changing_semantic_refs: projection
