@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use crate::visual::{
     command::VisualObjectId,
-    ir::{GraphIr, VisualEdge, VisualNode},
+    ir::{stable_visual_id, GraphIr, VisualEdge, VisualNode},
 };
 
 use super::{au_legal_bearing_read_model, AuLegalBearingInput, UnifiedWorkbenchReadModel};
@@ -351,17 +351,6 @@ fn edge_weight(edge: &LegalFollowGraphEdge) -> f32 {
         .and_then(Value::as_f64)
         .map(|weight| weight as f32)
         .unwrap_or(1.0)
-}
-
-pub fn stable_visual_id(semantic_ref: &str) -> VisualObjectId {
-    // Deterministic FNV-1a. This is a visual identity projection only, never a
-    // canonical semantic digest or authority identifier.
-    let mut hash = 0xcbf29ce484222325u64;
-    for byte in semantic_ref.as_bytes() {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-    VisualObjectId(hash)
 }
 
 fn collect_refs(rows: Option<&Value>, keys: &[&str]) -> Vec<String> {
