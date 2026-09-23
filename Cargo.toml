@@ -45,3 +45,8 @@ required-features = ["production-data"]
 name = "m11_postgres_comparative_gpu_receipt"
 path = "examples/m11_postgres_comparative_gpu_receipt.rs"
 required-features = ["production-data", "gpu"]
+
+[[example]]
+name = "m11_postgres_pabai_gpu_receipt"
+path = "examples/m11_postgres_pabai_gpu_receipt.rs"
+required-features = ["production-data", "gpu"]
