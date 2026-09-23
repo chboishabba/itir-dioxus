@@ -224,6 +224,72 @@ pub fn compare_graph_ir(
 }
 
 
+fn canonicalize_graph_pair(left: &GraphIr, right: &GraphIr) -> (GraphIr, GraphIr) {
+    let node_semantics = left
+        .nodes
+        .iter()
+        .chain(right.nodes.iter())
+        .map(|node| node.semantic_ref.clone())
+        .collect::<BTreeSet<_>>();
+    let edge_semantics = left
+        .edges
+        .iter()
+        .chain(right.edges.iter())
+        .map(|edge| edge.semantic_ref.clone())
+        .collect::<BTreeSet<_>>();
+
+    let node_ids = node_semantics
+        .into_iter()
+        .enumerate()
+        .map(|(index, semantic_ref)| (semantic_ref, VisualObjectId(index as u64 + 1)))
+        .collect::<BTreeMap<_, _>>();
+    let edge_base = node_ids.len() as u64 + 1;
+    let edge_ids = edge_semantics
+        .into_iter()
+        .enumerate()
+        .map(|(index, semantic_ref)| {
+            (semantic_ref, VisualObjectId(edge_base + index as u64))
+        })
+        .collect::<BTreeMap<_, _>>();
+
+    let reindex = |graph: &GraphIr| {
+        let old_to_new = graph
+            .nodes
+            .iter()
+            .map(|node| (node.id, node_ids[&node.semantic_ref]))
+            .collect::<BTreeMap<_, _>>();
+        let nodes = graph
+            .nodes
+            .iter()
+            .cloned()
+            .map(|mut node| {
+                node.id = node_ids[&node.semantic_ref];
+                node
+            })
+            .collect::<Vec<_>>();
+        let edges = graph
+            .edges
+            .iter()
+            .cloned()
+            .map(|mut edge| {
+                edge.id = edge_ids[&edge.semantic_ref];
+                edge.from = old_to_new[&edge.from];
+                edge.to = old_to_new[&edge.to];
+                edge
+            })
+            .collect::<Vec<_>>();
+        GraphIr {
+            graph_ref: graph.graph_ref.clone(),
+            derived_only: graph.derived_only,
+            challengeable: graph.challengeable,
+            nodes,
+            edges,
+        }
+    };
+
+    (reindex(left), reindex(right))
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ComparativeProofTopology {
     pub comparison_ref: String,
@@ -251,7 +317,8 @@ pub fn comparative_proof_topology(
     right: &GraphIr,
 ) -> ComparativeProofTopology {
     let comparison_ref = comparison_ref.into();
-    let comparative = compare_graph_ir(comparison_ref.clone(), left, right);
+    let (left, right) = canonicalize_graph_pair(left, right);
+    let comparative = compare_graph_ir(comparison_ref.clone(), &left, &right);
 
     let mut left_node_by_semantic = BTreeMap::new();
     left_node_by_semantic.extend(
@@ -307,9 +374,9 @@ pub fn comparative_proof_topology(
         }
         let (source_edge, source_graph) =
             if let Some(edge) = right_edge_by_semantic.get(&object.semantic_ref).copied() {
-                (edge, right)
+                (edge, &right)
             } else if let Some(edge) = left_edge_by_semantic.get(&object.semantic_ref).copied() {
-                (edge, left)
+                (edge, &left)
             } else {
                 continue;
             };
@@ -368,8 +435,8 @@ pub fn comparative_proof_topology(
 
     ComparativeProofTopology {
         comparison_ref,
-        before: left.clone(),
-        after: right.clone(),
+        before: left,
+        after: right,
         delta,
         comparative,
         creates_semantic_authority: false,
@@ -393,6 +460,46 @@ mod tests {
             x: 0.0,
             y: 0.0,
         }
+    }
+
+    #[test]
+    fn shared_semantic_objects_use_one_canonical_id_space_across_panels() {
+        let left = GraphIr {
+            graph_ref: "graph:left-id-space".into(),
+            derived_only: true,
+            challengeable: true,
+            nodes: vec![node(90, "semantic:shared", "proposition")],
+            edges: vec![],
+        };
+        let right = GraphIr {
+            graph_ref: "graph:right-id-space".into(),
+            derived_only: true,
+            challengeable: true,
+            nodes: vec![node(900, "semantic:shared", "proposition")],
+            edges: vec![],
+        };
+
+        let topology = comparative_proof_topology("comparison:id-space", &left, &right);
+        let before_id = topology
+            .before
+            .nodes
+            .iter()
+            .find(|node| node.semantic_ref == "semantic:shared")
+            .unwrap()
+            .id;
+        let after_id = topology
+            .after
+            .nodes
+            .iter()
+            .find(|node| node.semantic_ref == "semantic:shared")
+            .unwrap()
+            .id;
+
+        assert_eq!(before_id, after_id);
+        assert_eq!(
+            topology.comparative.objects[0].left_object_id,
+            topology.comparative.objects[0].right_object_id
+        );
     }
 
     #[test]
@@ -472,10 +579,20 @@ mod tests {
             edges: vec![],
         };
 
+        let left_input = left.clone();
+        let right_input = right.clone();
         let topology = comparative_proof_topology("comparison:pabai", &left, &right);
 
-        assert_eq!(topology.before, left);
-        assert_eq!(topology.after, right);
+        assert_eq!(left, left_input);
+        assert_eq!(right, right_input);
+        assert_eq!(
+            topology.before.node(VisualObjectId(1)).unwrap().semantic_ref,
+            "semantic:shared"
+        );
+        assert_eq!(
+            topology.after.node(VisualObjectId(1)).unwrap().semantic_ref,
+            "semantic:shared"
+        );
         assert_eq!(topology.delta.nodes.len(), 2);
         assert!(topology
             .delta
