@@ -72,7 +72,6 @@ fn WorkbenchStageCard(
     }
 }
 
-
 #[component]
 pub fn ComparativeWorkbenchView(model: ComparativeWorkbenchReadModel) -> Element {
     let before_nodes = model.topology.before.nodes.len();
@@ -175,7 +174,10 @@ pub fn ComparativeWorkbenchView(model: ComparativeWorkbenchReadModel) -> Element
                                     if !annotation.justification_refs.is_empty() {
                                         div {
                                             style: "font-size: 0.8rem; opacity: 0.7;",
-                                            "justification: {annotation.justification_refs.join(", ")}"
+                                            "justification:"
+                                            for justification_ref in annotation.justification_refs.iter() {
+                                                span { " {justification_ref}" }
+                                            }
                                         }
                                     }
                                 } else {

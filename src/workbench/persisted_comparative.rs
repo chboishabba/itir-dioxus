@@ -5,8 +5,8 @@ use super::{
     au_fact_review::{replay_legacy_au_workbench_json, AuFactReviewProjection},
     comparative::{
         comparative_workbench_read_model, three_way_comparative_sequence_with_overlays,
-        ComparativeExplanationOverlay, ComparativeSelectors,
-        ComparativeWorkbenchReadModel, ThreeWayComparativeSequence,
+        ComparativeExplanationOverlay, ComparativeSelectors, ComparativeWorkbenchReadModel,
+        ThreeWayComparativeSequence,
     },
 };
 
@@ -37,6 +37,9 @@ impl PersistedComparativeOverlay {
     pub fn into_read_model_overlay(self) -> Result<ComparativeExplanationOverlay, String> {
         self.validate()?;
         Ok(ComparativeExplanationOverlay {
+            // Legacy replay bundles predate typed annotations.  Preserve their
+            // compatibility maps, but do not infer typed metadata from them.
+            typed_change_annotations: BTreeMap::new(),
             change_layer_by_semantic_ref: self.change_layer_by_semantic_ref,
             explanation_by_semantic_ref: self.explanation_by_semantic_ref,
             answer_changing_semantic_refs: self.answer_changing_semantic_refs,
@@ -87,7 +90,6 @@ fn graph_has_provenance_refs(projection: &AuFactReviewProjection) -> bool {
             .iter()
             .any(|edge| !edge.provenance_refs.is_empty())
 }
-
 
 fn graph_semantic_refs(projection: &AuFactReviewProjection) -> BTreeSet<String> {
     projection
@@ -253,11 +255,18 @@ pub fn replay_persisted_three_way_comparative_json(
     let w1 = replay_legacy_au_workbench_json(w1_raw, max_nodes, max_edges)?;
     let w2 = replay_legacy_au_workbench_json(w2_raw, max_nodes, max_edges)?;
 
-    if [w0.graph_ir.nodes.len(), w1.graph_ir.nodes.len(), w2.graph_ir.nodes.len()]
-        .into_iter()
-        .any(|count| count == 0)
+    if [
+        w0.graph_ir.nodes.len(),
+        w1.graph_ir.nodes.len(),
+        w2.graph_ir.nodes.len(),
+    ]
+    .into_iter()
+    .any(|count| count == 0)
     {
-        return Err("three-way comparative specimen requires three non-empty persisted legal-follow graphs".into());
+        return Err(
+            "three-way comparative specimen requires three non-empty persisted legal-follow graphs"
+                .into(),
+        );
     }
 
     let parse_overlay = |raw: Option<&str>| -> Result<PersistedComparativeOverlay, String> {
@@ -404,13 +413,15 @@ mod tests {
                     }
                 }
             }
-        }).to_string();
+        })
+        .to_string();
         let right = left.clone();
         let overlay = json!({
             "change_layer_by_semantic_ref": {"semantic:D": "Applicability"},
             "explanation_by_semantic_ref": {"semantic:D": "defeater blocks route"},
             "answer_changing_semantic_refs": ["semantic:D"]
-        }).to_string();
+        })
+        .to_string();
 
         assert!(replay_persisted_comparative_workbench_json(
             "comparison:unbacked-answer-change",
