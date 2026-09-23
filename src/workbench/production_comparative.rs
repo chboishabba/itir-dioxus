@@ -9,7 +9,9 @@ use sensiblaw_legal_runtime::{
     ComparativeWorkbenchOverlay,
 };
 use sensiblaw_pg_source_store::{
-    load_database_config, load_persisted_workbench_projection,
+    consecutive_projection_pairs, consecutive_projection_triples,
+    list_legal_follow_projection_summaries, load_database_config,
+    load_persisted_workbench_projection,
 };
 use sensiblaw_reader_model::{
     ComparativeChangeLayer as ReaderChangeLayer, ComparativeWorkbenchProjection,
@@ -31,6 +33,214 @@ use super::{
     },
 };
 
+
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PostgresComparativePairCandidate {
+    pub document_ref: String,
+    pub before_projection_ref: String,
+    pub after_projection_ref: String,
+    pub shared_semantic_ref_count: usize,
+    pub changed_semantic_ref_count: usize,
+    pub left_only_semantic_ref_count: usize,
+    pub right_only_semantic_ref_count: usize,
+    pub has_semantic_delta: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PostgresComparativeTripleCandidate {
+    pub document_ref: String,
+    pub w0_projection_ref: String,
+    pub w1_projection_ref: String,
+    pub w2_projection_ref: String,
+    pub w0_w1_changed_semantic_ref_count: usize,
+    pub w1_w2_changed_semantic_ref_count: usize,
+    pub both_transitions_nontrivial: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PostgresComparativeDiscoveryReceipt {
+    pub pair_candidates: Vec<PostgresComparativePairCandidate>,
+    pub triple_candidates: Vec<PostgresComparativeTripleCandidate>,
+    pub candidate_only: bool,
+    pub creates_semantic_authority: bool,
+    pub creates_claim_truth: bool,
+    pub predicts_outcome: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PostgresPabaiTripleProbe {
+    pub document_ref: String,
+    pub w0_projection_ref: String,
+    pub w1_projection_ref: String,
+    pub w2_projection_ref: String,
+    pub exact_typed_overlay_weld: bool,
+    pub failure_reason: Option<String>,
+}
+
+fn load_projection_cached(
+    client: &mut Client,
+    cache: &mut BTreeMap<String, sensiblaw_reader_model::PersistedWorkbenchProjection>,
+    projection_ref: &str,
+) -> Result<sensiblaw_reader_model::PersistedWorkbenchProjection, String> {
+    if let Some(projection) = cache.get(projection_ref) {
+        return Ok(projection.clone());
+    }
+    let projection = load_persisted_workbench_projection(
+        client,
+        projection_ref,
+        &format!("world:postgres:{projection_ref}"),
+    )
+    .map_err(|error| error.to_string())?;
+    cache.insert(projection_ref.to_owned(), projection.clone());
+    Ok(projection)
+}
+
+pub fn discover_postgres_comparative_candidates(
+    limit: i64,
+) -> Result<PostgresComparativeDiscoveryReceipt, String> {
+    let config = load_database_config(None).map_err(|error| error.to_string())?;
+    let mut client =
+        Client::connect(config.database_url(), NoTls).map_err(|error| error.to_string())?;
+
+    let summaries =
+        list_legal_follow_projection_summaries(&mut client, limit)
+            .map_err(|error| error.to_string())?;
+    let pairs = consecutive_projection_pairs(&summaries);
+    let triples = consecutive_projection_triples(&summaries);
+    let mut cache = BTreeMap::new();
+
+    let mut pair_candidates = Vec::with_capacity(pairs.len());
+    for pair in pairs {
+        let before =
+            load_projection_cached(&mut client, &mut cache, &pair.before_projection_ref)?;
+        let after =
+            load_projection_cached(&mut client, &mut cache, &pair.after_projection_ref)?;
+        let typed = project_typed_workbench_comparison(
+            &format!(
+                "comparison:discover:{}:{}",
+                pair.before_projection_ref, pair.after_projection_ref
+            ),
+            &before,
+            &after,
+            None,
+        )?;
+        let has_semantic_delta = !typed.changed_semantic_refs.is_empty()
+            || !typed.left_only_semantic_refs.is_empty()
+            || !typed.right_only_semantic_refs.is_empty();
+        pair_candidates.push(PostgresComparativePairCandidate {
+            document_ref: pair.document_ref,
+            before_projection_ref: pair.before_projection_ref,
+            after_projection_ref: pair.after_projection_ref,
+            shared_semantic_ref_count: typed.shared_semantic_refs.len(),
+            changed_semantic_ref_count: typed.changed_semantic_refs.len(),
+            left_only_semantic_ref_count: typed.left_only_semantic_refs.len(),
+            right_only_semantic_ref_count: typed.right_only_semantic_refs.len(),
+            has_semantic_delta,
+        });
+    }
+
+    let mut triple_candidates = Vec::with_capacity(triples.len());
+    for triple in triples {
+        let w0 = load_projection_cached(&mut client, &mut cache, &triple.w0_projection_ref)?;
+        let w1 = load_projection_cached(&mut client, &mut cache, &triple.w1_projection_ref)?;
+        let w2 = load_projection_cached(&mut client, &mut cache, &triple.w2_projection_ref)?;
+        let typed = project_typed_three_way_workbench_comparison(
+            &format!(
+                "comparison:discover:{}:{}:{}",
+                triple.w0_projection_ref, triple.w1_projection_ref, triple.w2_projection_ref
+            ),
+            w0,
+            w1,
+            w2,
+            None,
+            None,
+        )?;
+        let first = typed.w0_to_w1.changed_semantic_refs.len()
+            + typed.w0_to_w1.left_only_semantic_refs.len()
+            + typed.w0_to_w1.right_only_semantic_refs.len();
+        let second = typed.w1_to_w2.changed_semantic_refs.len()
+            + typed.w1_to_w2.left_only_semantic_refs.len()
+            + typed.w1_to_w2.right_only_semantic_refs.len();
+        triple_candidates.push(PostgresComparativeTripleCandidate {
+            document_ref: triple.document_ref,
+            w0_projection_ref: triple.w0_projection_ref,
+            w1_projection_ref: triple.w1_projection_ref,
+            w2_projection_ref: triple.w2_projection_ref,
+            w0_w1_changed_semantic_ref_count: first,
+            w1_w2_changed_semantic_ref_count: second,
+            both_transitions_nontrivial: first > 0 && second > 0,
+        });
+    }
+
+    Ok(PostgresComparativeDiscoveryReceipt {
+        pair_candidates,
+        triple_candidates,
+        candidate_only: true,
+        creates_semantic_authority: false,
+        creates_claim_truth: false,
+        predicts_outcome: false,
+    })
+}
+
+pub fn probe_postgres_pabai_triples(
+    limit: i64,
+) -> Result<Vec<PostgresPabaiTripleProbe>, String> {
+    let config = load_database_config(None).map_err(|error| error.to_string())?;
+    let mut client =
+        Client::connect(config.database_url(), NoTls).map_err(|error| error.to_string())?;
+    let summaries =
+        list_legal_follow_projection_summaries(&mut client, limit)
+            .map_err(|error| error.to_string())?;
+    let triples = consecutive_projection_triples(&summaries);
+    let pabai = run_pabai_comparative_regression()?;
+    let d_overlay =
+        workbench_overlay_from_explanation(&pabai.w0_to_w1_explanation)?;
+    let c_overlay =
+        workbench_overlay_from_explanation(&pabai.w1_to_w2_explanation)?;
+    let mut cache = BTreeMap::new();
+    let mut probes = Vec::with_capacity(triples.len());
+
+    for triple in triples {
+        let result = (|| -> Result<(), String> {
+            let w0 =
+                load_projection_cached(&mut client, &mut cache, &triple.w0_projection_ref)?;
+            let w1 =
+                load_projection_cached(&mut client, &mut cache, &triple.w1_projection_ref)?;
+            let w2 =
+                load_projection_cached(&mut client, &mut cache, &triple.w2_projection_ref)?;
+            let typed = project_typed_three_way_workbench_comparison(
+                &format!(
+                    "comparison:pabai:probe:{}:{}:{}",
+                    triple.w0_projection_ref,
+                    triple.w1_projection_ref,
+                    triple.w2_projection_ref
+                ),
+                w0,
+                w1,
+                w2,
+                Some(&d_overlay),
+                Some(&c_overlay),
+            )?;
+            if typed.w0_to_w1.change_annotations.is_empty()
+                || typed.w1_to_w2.change_annotations.is_empty()
+            {
+                return Err("Pabai overlay produced no typed change annotations".into());
+            }
+            Ok(())
+        })();
+
+        probes.push(PostgresPabaiTripleProbe {
+            document_ref: triple.document_ref,
+            w0_projection_ref: triple.w0_projection_ref,
+            w1_projection_ref: triple.w1_projection_ref,
+            w2_projection_ref: triple.w2_projection_ref,
+            exact_typed_overlay_weld: result.is_ok(),
+            failure_reason: result.err(),
+        });
+    }
+    Ok(probes)
+}
 
 fn presentation_layer(layer: ReaderChangeLayer) -> ComparativePresentationChangeLayer {
     match layer {
