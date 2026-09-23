@@ -1,3 +1,4 @@
+pub mod persisted_comparative;
 pub mod comparative;
 pub mod au_fact_review;
 
