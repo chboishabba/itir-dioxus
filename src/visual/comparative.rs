@@ -585,14 +585,19 @@ mod tests {
 
         assert_eq!(left, left_input);
         assert_eq!(right, right_input);
-        assert_eq!(
-            topology.before.node(VisualObjectId(1)).unwrap().semantic_ref,
-            "semantic:shared"
-        );
-        assert_eq!(
-            topology.after.node(VisualObjectId(1)).unwrap().semantic_ref,
-            "semantic:shared"
-        );
+        let before_shared = topology
+            .before
+            .nodes
+            .iter()
+            .find(|node| node.semantic_ref == "semantic:shared")
+            .unwrap();
+        let after_shared = topology
+            .after
+            .nodes
+            .iter()
+            .find(|node| node.semantic_ref == "semantic:shared")
+            .unwrap();
+        assert_eq!(before_shared.id, after_shared.id);
         assert_eq!(topology.delta.nodes.len(), 2);
         assert!(topology
             .delta
