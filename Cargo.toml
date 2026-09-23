@@ -9,7 +9,7 @@ description = "Dioxus + wgpu operator workbench for the ITIR/SensibLaw suite"
 default = ["desktop"]
 desktop = ["dioxus/desktop"]
 web = ["dioxus/web"]
-gpu = ["dep:wgpu"]
+gpu = ["dep:wgpu", "dep:pollster"]
 
 [dependencies]
 dioxus = { version = "0.7.10", features = ["router"] }
@@ -19,3 +19,8 @@ wgpu = { version = "29.0.3", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4"
+
+[[example]]
+name = "au_legal_gpu_receipt"
+path = "examples/au_legal_gpu_receipt.rs"
+required-features = ["gpu"]
