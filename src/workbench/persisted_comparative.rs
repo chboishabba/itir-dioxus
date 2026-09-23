@@ -88,6 +88,82 @@ fn graph_has_provenance_refs(projection: &AuFactReviewProjection) -> bool {
             .any(|edge| !edge.provenance_refs.is_empty())
 }
 
+
+fn graph_semantic_refs(projection: &AuFactReviewProjection) -> BTreeSet<String> {
+    projection
+        .graph_ir
+        .nodes
+        .iter()
+        .map(|node| node.semantic_ref.clone())
+        .chain(
+            projection
+                .graph_ir
+                .edges
+                .iter()
+                .map(|edge| edge.semantic_ref.clone()),
+        )
+        .collect()
+}
+
+fn semantic_has_source_and_provenance(
+    projection: &AuFactReviewProjection,
+    semantic_ref: &str,
+) -> bool {
+    projection
+        .graph_ir
+        .nodes
+        .iter()
+        .find(|node| node.semantic_ref == semantic_ref)
+        .is_some_and(|node| !node.source_refs.is_empty() && !node.provenance_refs.is_empty())
+        || projection
+            .graph_ir
+            .edges
+            .iter()
+            .find(|edge| edge.semantic_ref == semantic_ref)
+            .is_some_and(|edge| !edge.source_refs.is_empty() && !edge.provenance_refs.is_empty())
+}
+
+fn validate_overlay_against_graphs(
+    overlay: &ComparativeExplanationOverlay,
+    left: &AuFactReviewProjection,
+    right: &AuFactReviewProjection,
+) -> Result<(), String> {
+    let available = graph_semantic_refs(left)
+        .union(&graph_semantic_refs(right))
+        .cloned()
+        .collect::<BTreeSet<_>>();
+
+    let referenced = overlay
+        .change_layer_by_semantic_ref
+        .keys()
+        .chain(overlay.explanation_by_semantic_ref.keys())
+        .chain(overlay.answer_changing_semantic_refs.iter())
+        .chain(overlay.unresolved_semantic_refs.iter())
+        .cloned()
+        .collect::<BTreeSet<_>>();
+
+    let missing = referenced
+        .difference(&available)
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    if !missing.is_empty() {
+        return Err(format!(
+            "comparative overlay references semantic objects absent from persisted graphs: {missing:?}"
+        ));
+    }
+
+    for semantic_ref in &overlay.answer_changing_semantic_refs {
+        if !semantic_has_source_and_provenance(left, semantic_ref)
+            && !semantic_has_source_and_provenance(right, semantic_ref)
+        {
+            return Err(format!(
+                "answer-changing semantic object lacks source/provenance closure: {semantic_ref}"
+            ));
+        }
+    }
+    Ok(())
+}
+
 pub fn project_persisted_comparative_workbench_json(
     comparison_ref: &str,
     left_raw: &str,
@@ -113,6 +189,8 @@ pub fn project_persisted_comparative_workbench_json(
             .into_read_model_overlay()?,
         None => ComparativeExplanationOverlay::empty(),
     };
+
+    validate_overlay_against_graphs(&overlay, &left, &right)?;
 
     let selectors = ComparativeSelectors {
         left_ref: left.read_model.world_ref.clone(),
@@ -191,6 +269,10 @@ pub fn project_persisted_three_way_comparative_json(
     };
     let w0_w1 = parse_overlay(w0_w1_overlay_raw)?;
     let w1_w2 = parse_overlay(w1_w2_overlay_raw)?;
+    let w0_w1_read_overlay = w0_w1.clone().into_read_model_overlay()?;
+    let w1_w2_read_overlay = w1_w2.clone().into_read_model_overlay()?;
+    validate_overlay_against_graphs(&w0_w1_read_overlay, &w0, &w1)?;
+    validate_overlay_against_graphs(&w1_w2_read_overlay, &w1, &w2)?;
 
     // three_way_comparative_sequence currently accepts only answer-changing
     // semantic refs. Rich layer/reason overlays remain available through the
@@ -278,6 +360,66 @@ mod tests {
         let after = specimen.read_model.topology.after.nodes[0].id;
         assert_eq!(before, after);
         assert!(!specimen.creates_claim_truth);
+    }
+
+    #[test]
+    fn overlay_must_reference_persisted_semantic_objects() {
+        let left = persisted("w0", "semantic:present", "receipt:w0");
+        let right = persisted("w1", "semantic:present", "receipt:w1");
+        let overlay = json!({
+            "change_layer_by_semantic_ref": {"semantic:missing": "Applicability"},
+            "answer_changing_semantic_refs": ["semantic:missing"]
+        })
+        .to_string();
+
+        assert!(project_persisted_comparative_workbench_json(
+            "comparison:missing-overlay-object",
+            &left,
+            &right,
+            Some(&overlay),
+            20,
+            30,
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn answer_changing_overlay_requires_source_and_provenance_closure() {
+        let left = json!({
+            "workbench": {
+                "run": { "fact_run_id": "w0" },
+                "semantic_context": {
+                    "legal_follow_graph": {
+                        "version": "graph:w0",
+                        "derived_only": true,
+                        "challengeable": true,
+                        "nodes": [{
+                            "id": "semantic:D",
+                            "kind": "defeater",
+                            "label": "D",
+                            "metadata": {}
+                        }],
+                        "edges": []
+                    }
+                }
+            }
+        }).to_string();
+        let right = left.clone();
+        let overlay = json!({
+            "change_layer_by_semantic_ref": {"semantic:D": "Applicability"},
+            "explanation_by_semantic_ref": {"semantic:D": "defeater blocks route"},
+            "answer_changing_semantic_refs": ["semantic:D"]
+        }).to_string();
+
+        assert!(project_persisted_comparative_workbench_json(
+            "comparison:unbacked-answer-change",
+            &left,
+            &right,
+            Some(&overlay),
+            20,
+            30,
+        )
+        .is_err());
     }
 
     #[test]
