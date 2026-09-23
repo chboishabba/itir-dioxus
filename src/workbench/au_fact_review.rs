@@ -84,7 +84,8 @@ pub fn project_au_fact_review(input: AuFactReviewProjectionInput) -> UnifiedWork
     })
 }
 
-pub fn project_persisted_au_workbench_json(
+/// Replay/export adapter only. Production comparisons consume typed Rust read models.
+pub fn replay_legacy_au_workbench_json(
     raw: &str,
     max_nodes: usize,
     max_edges: usize,
@@ -582,7 +583,7 @@ mod tests {
         })
         .to_string();
 
-        let projection = project_persisted_au_workbench_json(&raw, 20, 30).unwrap();
+        let projection = replay_legacy_au_workbench_json(&raw, 20, 30).unwrap();
 
         assert_eq!(projection.persisted_source_refs, vec!["src:1"]);
         assert_eq!(projection.persisted_event_refs, vec!["event:1"]);
