@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 use super::{
-    au_fact_review::{project_persisted_au_workbench_json, AuFactReviewProjection},
+    au_fact_review::{replay_legacy_au_workbench_json, AuFactReviewProjection},
     comparative::{
         comparative_workbench_read_model, three_way_comparative_sequence_with_overlays,
         ComparativeExplanationOverlay, ComparativeSelectors,
@@ -166,7 +166,8 @@ fn validate_overlay_against_graphs(
     Ok(())
 }
 
-pub fn project_persisted_comparative_workbench_json(
+/// Offline/replay adapter only. Production comparisons consume typed Rust projections.
+pub fn replay_persisted_comparative_workbench_json(
     comparison_ref: &str,
     left_raw: &str,
     right_raw: &str,
@@ -178,8 +179,8 @@ pub fn project_persisted_comparative_workbench_json(
         return Err("persisted comparative workbench requires comparison_ref".into());
     }
 
-    let left = project_persisted_au_workbench_json(left_raw, max_nodes, max_edges)?;
-    let right = project_persisted_au_workbench_json(right_raw, max_nodes, max_edges)?;
+    let left = replay_legacy_au_workbench_json(left_raw, max_nodes, max_edges)?;
+    let right = replay_legacy_au_workbench_json(right_raw, max_nodes, max_edges)?;
 
     if left.graph_ir.nodes.is_empty() || right.graph_ir.nodes.is_empty() {
         return Err("persisted comparative specimen requires non-empty legal-follow graphs".into());
@@ -237,7 +238,8 @@ pub struct PersistedThreeWayComparativeSpecimen {
     pub predicts_outcome: bool,
 }
 
-pub fn project_persisted_three_way_comparative_json(
+/// Offline/replay adapter only. Production three-way comparisons query PostgreSQL in-process.
+pub fn replay_persisted_three_way_comparative_json(
     comparison_ref: &str,
     w0_raw: &str,
     w1_raw: &str,
@@ -247,9 +249,9 @@ pub fn project_persisted_three_way_comparative_json(
     max_nodes: usize,
     max_edges: usize,
 ) -> Result<PersistedThreeWayComparativeSpecimen, String> {
-    let w0 = project_persisted_au_workbench_json(w0_raw, max_nodes, max_edges)?;
-    let w1 = project_persisted_au_workbench_json(w1_raw, max_nodes, max_edges)?;
-    let w2 = project_persisted_au_workbench_json(w2_raw, max_nodes, max_edges)?;
+    let w0 = replay_legacy_au_workbench_json(w0_raw, max_nodes, max_edges)?;
+    let w1 = replay_legacy_au_workbench_json(w1_raw, max_nodes, max_edges)?;
+    let w2 = replay_legacy_au_workbench_json(w2_raw, max_nodes, max_edges)?;
 
     if [w0.graph_ir.nodes.len(), w1.graph_ir.nodes.len(), w2.graph_ir.nodes.len()]
         .into_iter()
@@ -341,7 +343,7 @@ mod tests {
     fn persisted_pair_uses_real_projection_boundary_not_reconstructed_semantics() {
         let left = persisted("w0", "semantic:shared", "receipt:w0");
         let right = persisted("w1", "semantic:shared", "receipt:w1");
-        let specimen = project_persisted_comparative_workbench_json(
+        let specimen = replay_persisted_comparative_workbench_json(
             "comparison:persisted",
             &left,
             &right,
@@ -371,7 +373,7 @@ mod tests {
         })
         .to_string();
 
-        assert!(project_persisted_comparative_workbench_json(
+        assert!(replay_persisted_comparative_workbench_json(
             "comparison:missing-overlay-object",
             &left,
             &right,
@@ -410,7 +412,7 @@ mod tests {
             "answer_changing_semantic_refs": ["semantic:D"]
         }).to_string();
 
-        assert!(project_persisted_comparative_workbench_json(
+        assert!(replay_persisted_comparative_workbench_json(
             "comparison:unbacked-answer-change",
             &left,
             &right,
@@ -433,7 +435,7 @@ mod tests {
         })
         .to_string();
 
-        assert!(project_persisted_comparative_workbench_json(
+        assert!(replay_persisted_comparative_workbench_json(
             "comparison:bad-overlay",
             &left,
             &right,
