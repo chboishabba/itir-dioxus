@@ -138,6 +138,19 @@ async fn run() -> Result<(), String> {
     println!("shell_gpu_reducer_parity=true");
     println!("delta_node_count={}", model.topology.delta.nodes.len());
     println!("delta_edge_count={}", model.topology.delta.edges.len());
+    println!(
+        "typed_annotation_count={}",
+        model.explanation_overlay.typed_change_annotations.len()
+    );
+    for (semantic_ref, annotation) in &model.explanation_overlay.typed_change_annotations {
+        println!("annotation_semantic_ref={semantic_ref}");
+        println!("annotation_layer={:?}", annotation.layer);
+        println!("annotation_answer_changing={}", annotation.answer_changing);
+        println!(
+            "annotation_justification_refs={}",
+            annotation.justification_refs.join(",")
+        );
+    }
     println!("creates_semantic_authority=false");
     println!("creates_claim_truth=false");
     println!("predicts_outcome=false");
