@@ -1,9 +1,9 @@
 use std::{env, process};
 
 use itir_dioxus::workbench::production_comparative::{
-    load_postgres_comparative_workbench,
+    discover_postgres_comparative_candidates, load_postgres_comparative_workbench,
     load_postgres_pabai_three_way_workbench,
-    load_postgres_three_way_comparative_workbench,
+    load_postgres_three_way_comparative_workbench, probe_postgres_pabai_triples,
 };
 
 fn main() {
@@ -16,6 +16,24 @@ fn main() {
 fn run() -> Result<(), String> {
     let args = env::args().skip(1).collect::<Vec<_>>();
     match args.as_slice() {
+        [flag] if flag == "--discover" => {
+            print_discovery(200)?;
+        }
+        [flag, limit] if flag == "--discover" => {
+            let limit = limit
+                .parse::<i64>()
+                .map_err(|error| format!("invalid discovery limit: {error}"))?;
+            print_discovery(limit)?;
+        }
+        [flag] if flag == "--probe-pabai" => {
+            print_pabai_probes(200)?;
+        }
+        [flag, limit] if flag == "--probe-pabai" => {
+            let limit = limit
+                .parse::<i64>()
+                .map_err(|error| format!("invalid Pabai probe limit: {error}"))?;
+            print_pabai_probes(limit)?;
+        }
         [left, right] => {
             let model = load_postgres_comparative_workbench(
                 "comparison:postgres:pair",
@@ -43,7 +61,7 @@ fn run() -> Result<(), String> {
         }
         _ => {
             return Err(
-                "usage: m11_postgres_comparative_workbench [--pabai] <w0-projection-ref> <w1-projection-ref> [w2-projection-ref]"
+                "usage: m11_postgres_comparative_workbench --discover [limit] | --probe-pabai [limit] | [--pabai] <w0-projection-ref> <w1-projection-ref> [w2-projection-ref]"
                     .into(),
             );
         }
@@ -51,6 +69,62 @@ fn run() -> Result<(), String> {
     Ok(())
 }
 
+
+
+fn print_discovery(limit: i64) -> Result<(), String> {
+    let receipt = discover_postgres_comparative_candidates(limit)?;
+    println!("carrier=typed-rust");
+    println!("database_source=postgres");
+    println!("pair_candidate_count={}", receipt.pair_candidates.len());
+    println!("triple_candidate_count={}", receipt.triple_candidates.len());
+
+    for pair in &receipt.pair_candidates {
+        println!(
+            "pair_candidate\tdocument_ref={}\tbefore={}\tafter={}\tshared={}\tchanged={}\tleft_only={}\tright_only={}\thas_semantic_delta={}",
+            pair.document_ref,
+            pair.before_projection_ref,
+            pair.after_projection_ref,
+            pair.shared_semantic_ref_count,
+            pair.changed_semantic_ref_count,
+            pair.left_only_semantic_ref_count,
+            pair.right_only_semantic_ref_count,
+            pair.has_semantic_delta,
+        );
+    }
+
+    for triple in &receipt.triple_candidates {
+        println!(
+            "triple_candidate\tdocument_ref={}\tw0={}\tw1={}\tw2={}\tw0_w1_delta={}\tw1_w2_delta={}\tboth_transitions_nontrivial={}",
+            triple.document_ref,
+            triple.w0_projection_ref,
+            triple.w1_projection_ref,
+            triple.w2_projection_ref,
+            triple.w0_w1_changed_semantic_ref_count,
+            triple.w1_w2_changed_semantic_ref_count,
+            triple.both_transitions_nontrivial,
+        );
+    }
+    Ok(())
+}
+
+fn print_pabai_probes(limit: i64) -> Result<(), String> {
+    let probes = probe_postgres_pabai_triples(limit)?;
+    println!("carrier=typed-rust");
+    println!("database_source=postgres");
+    println!("pabai_probe_count={}", probes.len());
+    for probe in probes {
+        println!(
+            "pabai_probe\tdocument_ref={}\tw0={}\tw1={}\tw2={}\texact_typed_overlay_weld={}\tfailure_reason={}",
+            probe.document_ref,
+            probe.w0_projection_ref,
+            probe.w1_projection_ref,
+            probe.w2_projection_ref,
+            probe.exact_typed_overlay_weld,
+            probe.failure_reason.as_deref().unwrap_or("none"),
+        );
+    }
+    Ok(())
+}
 
 fn print_typed_annotations(
     prefix: &str,
