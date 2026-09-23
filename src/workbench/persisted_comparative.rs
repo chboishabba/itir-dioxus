@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use super::{
     au_fact_review::{project_persisted_au_workbench_json, AuFactReviewProjection},
     comparative::{
-        comparative_workbench_read_model, three_way_comparative_sequence,
+        comparative_workbench_read_model, three_way_comparative_sequence_with_overlays,
         ComparativeExplanationOverlay, ComparativeSelectors,
         ComparativeWorkbenchReadModel, ThreeWayComparativeSequence,
     },
@@ -276,10 +276,7 @@ pub fn project_persisted_three_way_comparative_json(
     validate_overlay_against_graphs(&w0_w1_read_overlay, &w0, &w1)?;
     validate_overlay_against_graphs(&w1_w2_read_overlay, &w1, &w2)?;
 
-    // three_way_comparative_sequence currently accepts only answer-changing
-    // semantic refs. Rich layer/reason overlays remain available through the
-    // pairwise persisted adapter and are never inferred here.
-    let sequence = three_way_comparative_sequence(
+    let sequence = three_way_comparative_sequence_with_overlays(
         comparison_ref,
         &w0.graph_ir,
         &w1.graph_ir,
@@ -292,8 +289,8 @@ pub fn project_persisted_three_way_comparative_json(
             as_at_ref: None,
             scope_ref: None,
         },
-        w0_w1.answer_changing_semantic_refs,
-        w1_w2.answer_changing_semantic_refs,
+        w0_w1_read_overlay,
+        w1_w2_read_overlay,
     );
 
     Ok(PersistedThreeWayComparativeSpecimen {
