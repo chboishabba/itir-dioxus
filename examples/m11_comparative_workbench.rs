@@ -17,9 +17,9 @@ fn read(path: &str) -> String {
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
-    if args.len() != 2 && args.len() != 3 {
+    if args.len() != 2 && args.len() != 3 && args.len() != 5 {
         eprintln!(
-            "usage: m11_comparative_workbench <before.json> <after.json> [counter-after.json]"
+            "usage: m11_comparative_workbench <before.json> <after.json> [counter-after.json [D-overlay.json C-overlay.json]]"
         );
         process::exit(2);
     }
@@ -119,13 +119,15 @@ fn main() {
     }
 
     let w2 = read(&args[2]);
+    let d_overlay = (args.len() == 5).then(|| read(&args[3]));
+    let c_overlay = (args.len() == 5).then(|| read(&args[4]));
     let specimen = match project_persisted_three_way_comparative_json(
         "comparison:empirical:three-way",
         &w0,
         &w1,
         &w2,
-        None,
-        None,
+        d_overlay.as_deref(),
+        c_overlay.as_deref(),
         1000,
         2000,
     ) {
@@ -166,6 +168,42 @@ fn main() {
             .topology
             .comparative
             .changed_semantic_refs
+            .len()
+    );
+    println!(
+        "w0_w1_answer_changing_refs={}",
+        specimen
+            .sequence
+            .w0_to_w1
+            .explanation_overlay
+            .answer_changing_semantic_refs
+            .len()
+    );
+    println!(
+        "w1_w2_answer_changing_refs={}",
+        specimen
+            .sequence
+            .w1_to_w2
+            .explanation_overlay
+            .answer_changing_semantic_refs
+            .len()
+    );
+    println!(
+        "w0_w1_typed_explanations={}",
+        specimen
+            .sequence
+            .w0_to_w1
+            .explanation_overlay
+            .explanation_by_semantic_ref
+            .len()
+    );
+    println!(
+        "w1_w2_typed_explanations={}",
+        specimen
+            .sequence
+            .w1_to_w2
+            .explanation_overlay
+            .explanation_by_semantic_ref
             .len()
     );
     println!("candidate_only={}", specimen.candidate_only);
