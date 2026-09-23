@@ -51,6 +51,32 @@ fn run() -> Result<(), String> {
     Ok(())
 }
 
+
+fn print_typed_annotations(
+    prefix: &str,
+    model: &itir_dioxus::workbench::comparative::ComparativeWorkbenchReadModel,
+) {
+    println!(
+        "{prefix}_typed_annotation_count={}",
+        model.explanation_overlay.typed_change_annotations.len()
+    );
+    for (semantic_ref, annotation) in &model.explanation_overlay.typed_change_annotations {
+        println!("{prefix}_annotation_semantic_ref={semantic_ref}");
+        println!("{prefix}_annotation_layer={:?}", annotation.layer);
+        println!(
+            "{prefix}_annotation_answer_changing={}",
+            annotation.answer_changing
+        );
+        println!(
+            "{prefix}_annotation_justification_refs={}",
+            annotation.justification_refs.join(",")
+        );
+        if let Some(explanation_ref) = annotation.explanation_ref.as_ref() {
+            println!("{prefix}_annotation_explanation_ref={explanation_ref}");
+        }
+    }
+}
+
 fn print_pair(model: &itir_dioxus::workbench::comparative::ComparativeWorkbenchReadModel) {
     println!("carrier=typed-rust");
     println!("left_world_ref={}", model.selectors.left_ref);
@@ -69,6 +95,7 @@ fn print_pair(model: &itir_dioxus::workbench::comparative::ComparativeWorkbenchR
             .answer_changing_semantic_refs
             .len()
     );
+    print_typed_annotations("pair", model);
     println!("creates_semantic_authority={}", model.creates_semantic_authority);
     println!("creates_claim_truth={}", model.creates_claim_truth);
     println!("predicts_outcome={}", model.predicts_outcome);
@@ -112,6 +139,8 @@ fn print_three_way(
             .answer_changing_semantic_refs
             .len()
     );
+    print_typed_annotations("w0_w1", &sequence.w0_to_w1);
+    print_typed_annotations("w1_w2", &sequence.w1_to_w2);
     println!("creates_semantic_authority={}", sequence.creates_semantic_authority);
     println!("creates_claim_truth={}", sequence.creates_claim_truth);
     println!("predicts_outcome={}", sequence.predicts_outcome);
