@@ -5,6 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use postgres::{Client, NoTls};
 use sensiblaw_legal_runtime::{
     project_typed_three_way_workbench_comparison, project_typed_workbench_comparison,
+    run_pabai_comparative_regression, workbench_overlay_from_explanation,
     ComparativeWorkbenchOverlay,
 };
 use sensiblaw_pg_source_store::{
@@ -342,4 +343,25 @@ mod tests {
             .changed_semantic_refs
             .contains("semantic:shared"));
     }
+}
+
+
+pub fn load_postgres_pabai_three_way_workbench(
+    w0_projection_ref: &str,
+    w1_projection_ref: &str,
+    w2_projection_ref: &str,
+) -> Result<ThreeWayComparativeSequence, String> {
+    let pabai = run_pabai_comparative_regression()?;
+    let d_overlay =
+        workbench_overlay_from_explanation(&pabai.w0_to_w1_explanation)?;
+    let c_overlay =
+        workbench_overlay_from_explanation(&pabai.w1_to_w2_explanation)?;
+    load_postgres_three_way_comparative_workbench(
+        "comparison:pabai:postgres:w0-w1-w2",
+        w0_projection_ref,
+        w1_projection_ref,
+        w2_projection_ref,
+        Some(&d_overlay),
+        Some(&c_overlay),
+    )
 }
