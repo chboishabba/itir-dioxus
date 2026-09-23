@@ -128,8 +128,10 @@ fn validate_overlay_against_graphs(
     left: &AuFactReviewProjection,
     right: &AuFactReviewProjection,
 ) -> Result<(), String> {
-    let available = graph_semantic_refs(left)
-        .union(&graph_semantic_refs(right))
+    let left_refs = graph_semantic_refs(left);
+    let right_refs = graph_semantic_refs(right);
+    let available = left_refs
+        .union(&right_refs)
         .cloned()
         .collect::<BTreeSet<_>>();
 
