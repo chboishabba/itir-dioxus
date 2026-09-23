@@ -173,7 +173,49 @@ pub fn legal_follow_graph_to_ir(
         });
     }
 
-    let retained_nodes = graph.nodes.iter().take(max_nodes).collect::<Vec<_>>();
+    // A bounded proof view must retain a usable neighbourhood.  Taking the
+    // first N source nodes can produce a visually populated but edgeless
+    // graph when producer ordering puts event nodes before relation endpoints.
+    // Prefer source-order edges that fit the node budget, then fill remaining
+    // capacity from source-order nodes.  This is a projection choice only;
+    // it neither infers nor promotes an omitted relationship.
+    let known_node_ids = graph
+        .nodes
+        .iter()
+        .map(|node| node.id.as_str())
+        .collect::<BTreeSet<_>>();
+    let mut retained_id_values = BTreeSet::<String>::new();
+    let mut retained_edge_indexes = Vec::new();
+    for (index, edge) in graph.edges.iter().enumerate() {
+        if retained_edge_indexes.len() >= max_edges
+            || !known_node_ids.contains(edge.source.as_str())
+            || !known_node_ids.contains(edge.target.as_str())
+        {
+            continue;
+        }
+        let required_nodes = [edge.source.as_str(), edge.target.as_str()]
+            .into_iter()
+            .filter(|node_ref| !retained_id_values.contains(*node_ref))
+            .collect::<BTreeSet<_>>()
+            .len();
+        if retained_id_values.len() + required_nodes > max_nodes {
+            continue;
+        }
+        retained_id_values.insert(edge.source.clone());
+        retained_id_values.insert(edge.target.clone());
+        retained_edge_indexes.push(index);
+    }
+    for node in &graph.nodes {
+        if retained_id_values.len() >= max_nodes {
+            break;
+        }
+        retained_id_values.insert(node.id.clone());
+    }
+    let retained_nodes = graph
+        .nodes
+        .iter()
+        .filter(|node| retained_id_values.contains(&node.id))
+        .collect::<Vec<_>>();
     let retained_ids = retained_nodes
         .iter()
         .map(|node| node.id.as_str())
@@ -216,14 +258,11 @@ pub fn legal_follow_graph_to_ir(
         .collect::<Vec<_>>();
 
     let mut visual_edges = Vec::new();
-    for edge in graph
-        .edges
-        .iter()
-        .filter(|edge| {
-            retained_ids.contains(edge.source.as_str()) && retained_ids.contains(edge.target.as_str())
-        })
-        .take(max_edges)
-    {
+    for index in retained_edge_indexes {
+        let edge = &graph.edges[index];
+        if !retained_ids.contains(edge.source.as_str()) || !retained_ids.contains(edge.target.as_str()) {
+            continue;
+        }
         let semantic_ref = edge_semantic_ref(edge);
         visual_edges.push(VisualEdge {
             id: stable_visual_id(&semantic_ref),
@@ -492,6 +531,38 @@ mod tests {
         assert_eq!(first.nodes[0].provenance_refs, vec!["receipt:authority:1"]);
         assert!(first.derived_only);
         assert!(first.challengeable);
+    }
+
+    #[test]
+    fn bounded_graph_projection_prefers_a_connected_neighbourhood() {
+        let mut graph = graph_fixture();
+        graph.nodes.insert(
+            0,
+            LegalFollowGraphNode {
+                id: "node:unconnected:1".into(),
+                kind: "event".into(),
+                label: "Unconnected first node".into(),
+                metadata: BTreeMap::new(),
+            },
+        );
+        graph.nodes.insert(
+            1,
+            LegalFollowGraphNode {
+                id: "node:unconnected:2".into(),
+                kind: "event".into(),
+                label: "Unconnected second node".into(),
+                metadata: BTreeMap::new(),
+            },
+        );
+
+        let projection = legal_follow_graph_to_ir(&graph, 2, 1).unwrap();
+
+        assert_eq!(projection.nodes.len(), 2);
+        assert_eq!(projection.edges.len(), 1);
+        assert_eq!(
+            projection.edges[0].semantic_ref,
+            "edge:supports:node:authority:1->node:proposition:1"
+        );
     }
 
     #[test]
