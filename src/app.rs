@@ -160,21 +160,41 @@ pub fn ComparativeWorkbenchView(model: ComparativeWorkbenchReadModel) -> Element
                         {
                             li {
                                 strong { "{semantic_ref}" }
-                                if let Some(layer) = model
+                                if let Some(annotation) = model
                                     .explanation_overlay
-                                    .change_layer_by_semantic_ref
+                                    .typed_change_annotations
                                     .get(semantic_ref)
                                 {
-                                    span { " · layer={layer}" }
-                                }
-                                if let Some(reason) = model
-                                    .explanation_overlay
-                                    .explanation_by_semantic_ref
-                                    .get(semantic_ref)
-                                {
-                                    div {
-                                        style: "font-size: 0.9rem; opacity: 0.8;",
-                                        "{reason}"
+                                    span { " · layer={annotation.layer:?}" }
+                                    if let Some(reason) = annotation.explanation_ref.as_ref() {
+                                        div {
+                                            style: "font-size: 0.9rem; opacity: 0.8;",
+                                            "{reason}"
+                                        }
+                                    }
+                                    if !annotation.justification_refs.is_empty() {
+                                        div {
+                                            style: "font-size: 0.8rem; opacity: 0.7;",
+                                            "justification: {annotation.justification_refs.join(", ")}"
+                                        }
+                                    }
+                                } else {
+                                    if let Some(layer) = model
+                                        .explanation_overlay
+                                        .change_layer_by_semantic_ref
+                                        .get(semantic_ref)
+                                    {
+                                        span { " · layer={layer}" }
+                                    }
+                                    if let Some(reason) = model
+                                        .explanation_overlay
+                                        .explanation_by_semantic_ref
+                                        .get(semantic_ref)
+                                    {
+                                        div {
+                                            style: "font-size: 0.9rem; opacity: 0.8;",
+                                            "{reason}"
+                                        }
                                     }
                                 }
                             }
