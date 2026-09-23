@@ -10,7 +10,7 @@ use itir_dioxus::{
         ir::GraphIr,
         selection::{reduce_selection, SelectionState},
     },
-    workbench::persisted_comparative::project_persisted_comparative_workbench_json,
+    workbench::persisted_comparative::replay_persisted_comparative_workbench_json,
 };
 
 const WIDTH: u32 = 128;
@@ -45,7 +45,7 @@ async fn run() -> Result<(), String> {
     let right_raw = fs::read_to_string(&args[1])
         .map_err(|error| format!("failed to read {}: {error}", args[1]))?;
 
-    let specimen = project_persisted_comparative_workbench_json(
+    let specimen = replay_persisted_comparative_workbench_json(
         "comparison:empirical:gpu",
         &left_raw,
         &right_raw,
