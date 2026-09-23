@@ -1,3 +1,4 @@
+pub mod comparative;
 pub mod command;
 pub mod ir;
 pub mod interaction_ir;
