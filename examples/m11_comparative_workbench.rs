@@ -1,8 +1,8 @@
 use std::{env, fs, process};
 
 use itir_dioxus::workbench::persisted_comparative::{
-    project_persisted_comparative_workbench_json,
-    project_persisted_three_way_comparative_json,
+    replay_persisted_comparative_workbench_json,
+    replay_persisted_three_way_comparative_json,
 };
 
 fn read(path: &str) -> String {
@@ -28,7 +28,7 @@ fn main() {
     let w1 = read(&args[1]);
 
     if args.len() == 2 {
-        let specimen = match project_persisted_comparative_workbench_json(
+        let specimen = match replay_persisted_comparative_workbench_json(
             "comparison:empirical:pair",
             &w0,
             &w1,
@@ -121,7 +121,7 @@ fn main() {
     let w2 = read(&args[2]);
     let d_overlay = (args.len() == 5).then(|| read(&args[3]));
     let c_overlay = (args.len() == 5).then(|| read(&args[4]));
-    let specimen = match project_persisted_three_way_comparative_json(
+    let specimen = match replay_persisted_three_way_comparative_json(
         "comparison:empirical:three-way",
         &w0,
         &w1,
