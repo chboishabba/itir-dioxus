@@ -209,8 +209,8 @@ pub fn legal_follow_graph_to_ir(
                 source_refs: metadata_refs(&node.metadata, SOURCE_REF_KEYS),
                 provenance_refs: metadata_refs(&node.metadata, PROVENANCE_REF_KEYS),
                 hidden: false,
-                x: phase.cos(),
-                y: phase.sin(),
+                x: phase.cos() * 0.75,
+                y: phase.sin() * 0.75,
             }
         })
         .collect::<Vec<_>>();
