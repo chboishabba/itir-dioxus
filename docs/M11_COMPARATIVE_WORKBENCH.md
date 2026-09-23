@@ -226,3 +226,38 @@ residual payment
 winner selection
 outcome prediction
 ```
+
+
+## Typed change metadata
+
+The production comparative ABI now carries typed change metadata directly:
+
+```text
+semantic_ref
++ ComparativeChangeLayer
++ justification_refs
++ explanation_ref
++ answer_changing
+```
+
+The legal runtime derives this from the compiler-owned `ChangeLocus` /
+`TypedAnswerChangingExplanation` records and projects it into
+`sensiblaw-reader-model::ComparativeChangeAnnotation`.
+
+Dioxus explicitly converts that enum into a presentation enum. It does not
+classify changes from labels, colours, graph geometry, node kinds, or textual
+explanations.
+
+Compatibility string maps remain only for older replay/export surfaces.
+
+The Delta topology may visually emphasize an answer-changing object only when
+the typed annotation says `answer_changing = true`. The semantic ref,
+source/provenance refs and runtime-owned comparison class remain unchanged.
+
+The production Postgres CPU/GPU receipts print the typed annotation layer and
+justification refs so the empirical Pabai receipt can mechanically establish:
+
+```text
+W0 -> W1: D / Applicability / reviewed justification receipts
+W1 -> W2: C / Applicability / reviewed justification receipts
+```
