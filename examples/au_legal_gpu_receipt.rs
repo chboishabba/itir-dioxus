@@ -94,14 +94,25 @@ async fn run() -> Result<(), String> {
     });
     let pick_view = pick_texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-    let first_vertex = plan
+    let provenance_bearing_node = projection
+        .graph_ir
+        .nodes
+        .iter()
+        .find(|node| !node.hidden && !node.source_refs.is_empty() && !node.provenance_refs.is_empty())
+        .ok_or_else(|| {
+            "bounded real GraphIr has no visible node with both source_refs and provenance_refs"
+                .to_string()
+        })?;
+    let selected_vertex = plan
         .node_vertices
-        .first()
+        .iter()
+        .find(|vertex| vertex.object_id == provenance_bearing_node.id)
         .copied()
-        .ok_or_else(|| "GPU plan has no visible nodes".to_string())?;
-    let expected_pick_id = first_vertex.pick_id;
-    let expected_object = first_vertex.object_id;
-    let (pick_x, pick_y) = clip_to_pixel(first_vertex.position[0], first_vertex.position[1]);
+        .ok_or_else(|| "provenance-bearing GraphIr node was not uploaded to GPU plan".to_string())?;
+    let expected_pick_id = selected_vertex.pick_id;
+    let expected_object = selected_vertex.object_id;
+    let (pick_x, pick_y) =
+        clip_to_pixel(selected_vertex.position[0], selected_vertex.position[1]);
 
     let readback = device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("itir-m10-pick-readback"),
@@ -229,6 +240,12 @@ async fn run() -> Result<(), String> {
         .graph_ir
         .inspect_object(expected_object)
         .ok_or_else(|| "selected GPU object cannot be reopened in GraphIr".to_string())?;
+    if inspection.source_refs.is_empty() {
+        return Err("selected real semantic object reopened without source_refs".into());
+    }
+    if inspection.provenance_refs.is_empty() {
+        return Err("selected real semantic object reopened without provenance_refs".into());
+    }
 
     println!("adapter_name={}", adapter_info.name);
     println!("adapter_backend={:?}", adapter_info.backend);
@@ -244,6 +261,8 @@ async fn run() -> Result<(), String> {
     println!("kind={}", inspection.kind);
     println!("source_refs={}", inspection.source_refs.join(","));
     println!("provenance_refs={}", inspection.provenance_refs.join(","));
+    println!("source_refs_non_empty=true");
+    println!("provenance_refs_non_empty=true");
     println!("shell_gpu_reducer_parity=true");
     println!("creates_semantic_authority=false");
     println!("creates_claim_truth=false");
