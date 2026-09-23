@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::visual::{
-    command::VisualObjectId,
     ir::{stable_visual_id, GraphIr, VisualEdge, VisualNode},
 };
 
