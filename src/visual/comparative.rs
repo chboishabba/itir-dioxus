@@ -104,6 +104,7 @@ pub fn compare_graph_ir(
             match (left_node, right_node, left_edge, right_edge) {
                 (Some(left_node), Some(right_node), _, _) => {
                     let changed = left_node.kind != right_node.kind
+                        || left_node.label != right_node.label
                         || left_node.source_refs != right_node.source_refs
                         || left_node.provenance_refs != right_node.provenance_refs
                         || left_node.hidden != right_node.hidden;
@@ -148,7 +149,9 @@ pub fn compare_graph_ir(
                     )
                 }
                 (_, _, Some(left_edge), Some(right_edge)) => {
-                    let changed = left_edge.kind != right_edge.kind
+                    let changed = left_edge.from != right_edge.from
+                        || left_edge.to != right_edge.to
+                        || left_edge.kind != right_edge.kind
                         || left_edge.source_refs != right_edge.source_refs
                         || left_edge.provenance_refs != right_edge.provenance_refs
                         || left_edge.hidden != right_edge.hidden
