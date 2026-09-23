@@ -387,6 +387,35 @@ mod tests {
     }
 
     #[test]
+    fn graph_object_shell_and_gpu_pick_reach_same_reducer_state() {
+        use crate::visual::{
+            command::{decode_gpu, decode_shell, ShellInput},
+            selection::{reduce_selection, SelectionState},
+        };
+
+        let graph = graph();
+        let plan = prepare_graph_gpu_plan(&graph).unwrap();
+        let object = graph.nodes[0].id;
+        let pick_id = plan
+            .pick_to_object
+            .iter()
+            .find_map(|(pick_id, object_id)| (*object_id == object).then_some(*pick_id))
+            .unwrap();
+
+        let shell_state = reduce_selection(
+            decode_shell(ShellInput::Select(object)),
+            SelectionState::default(),
+        );
+        let gpu_state = reduce_selection(
+            decode_gpu(decode_graph_pick(Some(pick_id), &plan)),
+            SelectionState::default(),
+        );
+
+        assert_eq!(shell_state, gpu_state);
+        assert_eq!(shell_state.selected, Some(object));
+    }
+
+    #[test]
     fn hidden_nodes_are_not_uploaded_but_remain_in_graph_ir() {
         let mut graph = graph();
         graph.nodes[1].hidden = true;
