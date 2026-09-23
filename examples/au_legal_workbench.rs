@@ -1,7 +1,7 @@
 use std::{env, fs, process};
 
 use itir_dioxus::workbench::{
-    au_fact_review::project_persisted_au_workbench_json,
+    au_fact_review::replay_legacy_au_workbench_json,
     WorkbenchStageKind,
 };
 
@@ -22,7 +22,7 @@ fn main() {
         }
     };
 
-    let projection = match project_persisted_au_workbench_json(&raw, 20, 30) {
+    let projection = match replay_legacy_au_workbench_json(&raw, 20, 30) {
         Ok(projection) => projection,
         Err(error) => {
             eprintln!("failed to project AU workbench: {error}");
