@@ -327,6 +327,22 @@ pub fn comparative_proof_topology(
         else {
             continue;
         };
+
+        for semantic_ref in [from_semantic, to_semantic] {
+            if delta_id_by_semantic.contains_key(semantic_ref) {
+                continue;
+            }
+            let context_node = right_node_by_semantic
+                .get(semantic_ref)
+                .or_else(|| left_node_by_semantic.get(semantic_ref));
+            if let Some(context_node) = context_node {
+                let mut node = (*context_node).clone();
+                node.kind = class_kind(ComparativeVisualClass::Shared, &context_node.kind);
+                delta_id_by_semantic.insert(semantic_ref.to_owned(), node.id);
+                delta_nodes.push(node);
+            }
+        }
+
         let (Some(from), Some(to)) = (
             delta_id_by_semantic.get(from_semantic).copied(),
             delta_id_by_semantic.get(to_semantic).copied(),
@@ -378,6 +394,60 @@ mod tests {
             x: 0.0,
             y: 0.0,
         }
+    }
+
+    #[test]
+    fn changed_edge_keeps_shared_endpoint_context_in_delta_panel() {
+        let left_a = node(1, "semantic:a", "proposition");
+        let left_b = node(2, "semantic:b", "proposition");
+        let right_a = node(10, "semantic:a", "proposition");
+        let right_b = node(20, "semantic:b", "proposition");
+
+        let left = GraphIr {
+            graph_ref: "graph:left-edge".into(),
+            derived_only: true,
+            challengeable: true,
+            nodes: vec![left_a.clone(), left_b.clone()],
+            edges: vec![VisualEdge {
+                id: VisualObjectId(3),
+                from: left_a.id,
+                to: left_b.id,
+                semantic_ref: "edge:a-b".into(),
+                kind: "supports".into(),
+                source_refs: vec![],
+                provenance_refs: vec!["receipt:old".into()],
+                hidden: false,
+                weight: 1.0,
+            }],
+        };
+        let right = GraphIr {
+            graph_ref: "graph:right-edge".into(),
+            derived_only: true,
+            challengeable: true,
+            nodes: vec![right_a.clone(), right_b.clone()],
+            edges: vec![VisualEdge {
+                id: VisualObjectId(30),
+                from: right_a.id,
+                to: right_b.id,
+                semantic_ref: "edge:a-b".into(),
+                kind: "supports".into(),
+                source_refs: vec![],
+                provenance_refs: vec!["receipt:new".into()],
+                hidden: false,
+                weight: 1.0,
+            }],
+        };
+
+        let topology = comparative_proof_topology("comparison:edge", &left, &right);
+
+        assert_eq!(topology.delta.edges.len(), 1);
+        assert_eq!(topology.delta.nodes.len(), 2);
+        assert!(topology
+            .delta
+            .nodes
+            .iter()
+            .all(|node| node.kind.starts_with("comparative:shared:")));
+        assert!(topology.delta.edges[0].kind.starts_with("comparative:changed:"));
     }
 
     #[test]
