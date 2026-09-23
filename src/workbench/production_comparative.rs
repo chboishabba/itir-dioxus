@@ -4,9 +4,10 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use postgres::{Client, NoTls};
 use sensiblaw_legal_runtime::{
+    dashi_trade_phase9_answer_changing_explanation,
     project_typed_three_way_workbench_comparison, project_typed_workbench_comparison,
     run_pabai_comparative_regression, workbench_overlay_from_explanation,
-    ComparativeWorkbenchOverlay,
+    ComparativeWorkbenchOverlay, DashiTradePhase9Justification,
 };
 use sensiblaw_pg_source_store::{
     consecutive_projection_pairs, consecutive_projection_triples,
@@ -605,6 +606,95 @@ mod tests {
             creates_claim_truth: false,
             pays_residual: false,
         }
+    }
+
+
+    #[test]
+    fn dashitrade_phase9_typed_explanation_survives_reader_to_dioxus_without_inference() {
+        let left = PersistedWorkbenchProjection {
+            world_ref: "trade:w0".into(),
+            source_refs: vec!["source:phase9".into()],
+            event_refs: vec![],
+            handoff_refs: vec![],
+            research_residual_refs: vec![],
+            legal_follow_graph: PersistedWorkbenchGraph {
+                projection_ref: "projection:trade:w0".into(),
+                document_ref: "trade:phase9".into(),
+                nodes: vec![PersistedWorkbenchNode {
+                    semantic_ref: "coordinate:dashitrade:phase9-gate".into(),
+                    semantic_kind: "applicability".into(),
+                    label: "Phase-9 gate".into(),
+                    source_refs: vec!["source:phase9".into()],
+                    provenance_refs: vec!["receipt:phase9:w0".into()],
+                    candidate_only: true,
+                }],
+                edges: vec![],
+                derived_only: true,
+                challengeable: true,
+            },
+            candidate_only: true,
+            projection_only: true,
+            creates_semantic_authority: false,
+            creates_claim_truth: false,
+            pays_residual: false,
+        };
+        let mut right = left.clone();
+        right.world_ref = "trade:w1".into();
+        right.legal_follow_graph.projection_ref = "projection:trade:w1".into();
+        right.legal_follow_graph.nodes[0].provenance_refs =
+            vec!["receipt:phase9:w1".into()];
+
+        let receipt = dashi_trade_phase9_answer_changing_explanation(
+            "query:dashitrade:may-act",
+            "answer:actionable",
+            "answer:held",
+            "coordinate:dashitrade:phase9-gate",
+            "applicability:open",
+            "applicability:hold",
+            &DashiTradePhase9Justification {
+                regime_ref: "regime:hazard-observe".into(),
+                posture_ref: "posture:observe".into(),
+                actuator_ref: "actuator:bar-exec".into(),
+                cost_model_ref: "cost:phase9".into(),
+                expected_surplus_ref: "expected:nonpositive".into(),
+                realised_surplus_ref: "realised:later-observed".into(),
+            },
+        )
+        .unwrap();
+        let overlay = workbench_overlay_from_explanation(&receipt.explanation).unwrap();
+        let typed = project_typed_workbench_comparison(
+            "comparison:dashitrade:phase9",
+            &left,
+            &right,
+            Some(&overlay),
+        )
+        .unwrap();
+        let visual = comparative_read_model_from_typed(&typed).unwrap();
+
+        let annotation = visual
+            .explanation_overlay
+            .typed_change_annotations
+            .get("coordinate:dashitrade:phase9-gate")
+            .unwrap();
+        assert_eq!(
+            annotation.layer,
+            ComparativePresentationChangeLayer::Applicability
+        );
+        assert!(annotation.answer_changing);
+        assert_eq!(annotation.justification_refs.len(), 6);
+
+        let delta = visual
+            .topology
+            .delta
+            .nodes
+            .iter()
+            .find(|node| {
+                node.semantic_ref == "coordinate:dashitrade:phase9-gate"
+            })
+            .unwrap();
+        assert!(delta.kind.starts_with("answer-changing:Applicability:"));
+        assert!(!visual.creates_semantic_authority);
+        assert!(!visual.creates_claim_truth);
     }
 
     #[test]
