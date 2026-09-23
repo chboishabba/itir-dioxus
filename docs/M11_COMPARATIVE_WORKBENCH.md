@@ -1,124 +1,228 @@
-# M11 — Comparative Workbench Empirical Specimens
+# M11 — Comparative Workbench
 
-Status: source-written; focused compiler/GPU receipt still required for this tranche.
+Status: production boundary repaired; focused compiler/PostgreSQL/GPU receipts still required for this newest tranche.
 
-## Boundary
+## Canonical production path
 
-M11.1/M11.2 comparison semantics are already compiler-receipted.
+JSON is **not** the production comparative ABI.
 
-This tranche does not add another comparison engine. It consumes:
-
-- persisted AU workbench exports;
-- their persisted `legal_follow_graph` projections;
-- the existing comparative GraphIr projection;
-- the existing DomainCommand/reducer path;
-- optional typed presentation overlays emitted by SensibLaw.
-
-The comparative UI remains projection-only and cannot create semantic authority,
-claim truth, residual payment, a winning party, or a predicted outcome.
-
-## Pair specimen
-
-Run on two real persisted AU workbench exports:
-
-```bash
-cargo run --example m11_comparative_workbench --   /tmp/before.json   /tmp/after.json
-```
-
-The command fails closed if either persisted export has no legal-follow graph.
-
-It reports:
-
-- left/right world refs;
-- Before / After / Delta node and edge counts;
-- shared / changed / left-only / right-only semantic refs;
-- source/provenance availability;
-- non-promotion flags.
-
-## Three-way specimen
-
-For a Pabai-style W0 -> W1 -> W2 sequence:
-
-```bash
-cargo run --example m11_comparative_workbench --   /tmp/w0.json   /tmp/w1.json   /tmp/w2.json
-```
-
-This renders two linked comparisons:
+The canonical path is:
 
 ```text
-W0 -> W1
-W1 -> W2
+PostgreSQL normalized follow rows
+        ↓
+sensiblaw-pg-source-store
+        ↓
+PersistedWorkbenchProjection
+        ↓
+sensiblaw-legal-runtime
+        ↓
+ComparativeWorkbenchProjection
+        ↓
+itir-dioxus
+        ↓
+GraphIr / Before-After-Delta
+        ↓
+wgpu
 ```
 
-No route status is interpreted as a predicted judicial result.
+The PostgreSQL loader reads normalized typed rows from:
 
-## Typed D/C overlays
+```text
+pnf_follow_projection
+pnf_follow_node
+pnf_follow_edge
+pnf_follow_edge_provenance
+```
 
-SensibLaw can emit the reviewed typed explanation overlays directly:
+It deliberately does **not** reconstruct semantic graph state from
+`pnf_follow_projection.payload JSONB`.
+
+## Typed ownership
+
+### sensiblaw-reader-model
+
+Owns the portable production carriers:
+
+```text
+PersistedWorkbenchProjection
+PersistedWorkbenchGraph
+PersistedWorkbenchNode
+PersistedWorkbenchEdge
+
+ComparativeWorkbenchProjection
+ThreeWayComparativeWorkbenchProjection
+```
+
+Serialization is optional and exists only for diagnostic export, fixture replay,
+or explicit offline bundles.
+
+### sensiblaw-pg-source-store
+
+Owns PostgreSQL acquisition:
+
+```text
+projection_ref
+    ↓
+load_persisted_workbench_projection(...)
+    ↓
+PersistedWorkbenchProjection
+```
+
+### sensiblaw-legal-runtime
+
+Owns semantic comparison and typed explanation welding:
+
+```text
+PersistedWorkbenchProjection(left)
+PersistedWorkbenchProjection(right)
+        ↓
+project_typed_workbench_comparison(...)
+        ↓
+ComparativeWorkbenchProjection
+```
+
+For W0/W1/W2:
+
+```text
+project_typed_three_way_workbench_comparison(...)
+```
+
+Pabai D/C explanations are passed **in-process as Rust values**:
+
+```text
+TypedAnswerChangingExplanation
+    ↓
+ComparativeWorkbenchOverlay
+    ↓
+typed comparative projection
+```
+
+No overlay file is required in normal operation.
+
+### itir-dioxus
+
+Desktop production builds enable the `production-data` feature.
+
+Dioxus receives the typed comparative projection and lowers it into the existing
+visualisation/interaction IR. The frontend checks that its visual classification
+agrees exactly with the runtime-owned typed sets:
+
+```text
+shared
+changed
+left-only
+right-only
+```
+
+A mismatch is an error.
+
+Dioxus does not become the authority for semantic comparison.
+
+## Normal pair comparison
+
+With `DATABASE_URL` configured:
 
 ```bash
-cargo run -p sensiblaw-legal-runtime   --example m11_pabai_workbench_overlays -- D   > /tmp/pabai-D-overlay.json
-
-cargo run -p sensiblaw-legal-runtime   --example m11_pabai_workbench_overlays -- C   > /tmp/pabai-C-overlay.json
+cargo run --example m11_postgres_comparative_workbench --   <before-projection-ref>   <after-projection-ref>
 ```
 
-Then run:
+The carrier is typed Rust throughout.
+
+## Normal three-way comparison
 
 ```bash
-cargo run --example m11_comparative_workbench --   /tmp/w0.json   /tmp/w1.json   /tmp/w2.json   /tmp/pabai-D-overlay.json   /tmp/pabai-C-overlay.json
+cargo run --example m11_postgres_comparative_workbench --   <w0-projection-ref>   <w1-projection-ref>   <w2-projection-ref>
 ```
 
-The Dioxus adapter verifies that every overlay semantic ref exists in the
-persisted GraphIr. Every declared answer-changing semantic object must reopen
-both source and provenance refs.
-
-If SensibLaw's semantic identity does not weld to the persisted graph identity,
-the specimen fails rather than remapping or guessing.
-
-## Comparative GPU receipt
-
-With the GPU feature:
+For the Pabai D/C path:
 
 ```bash
-cargo run --no-default-features --features gpu   --example m11_comparative_gpu_receipt --   /tmp/before.json   /tmp/after.json
+cargo run --example m11_postgres_comparative_workbench --   --pabai   <w0-projection-ref>   <w1-projection-ref>   <w2-projection-ref>
 ```
 
-The receipt:
+The Pabai helper runs the existing typed Pabai comparative regression,
+constructs D/C overlays in memory, and passes them directly into the typed
+three-way projection.
 
-1. projects both real persisted legal-follow graphs;
-2. constructs Before / After / Delta using one canonical semantic object-ID space;
-3. submits all three graph draw passes;
-4. finds a shared visible semantic node with source + provenance closure;
-5. runs a real integer GPU pick in Before;
-6. runs the same semantic-object GPU pick in After;
-7. confirms Before-pick == After-pick == shell selection reducer state;
-8. reports non-promotion and non-prediction flags.
+## Production GPU receipt
 
-The GPU remains a projection/proposal mechanism.
+```bash
+cargo run --features gpu   --example m11_postgres_comparative_gpu_receipt --   <before-projection-ref>   <after-projection-ref>
+```
 
-## Dioxus shell
+The receipt starts from PostgreSQL projection refs and contains no JSON/file
+carrier step.
 
-`ComparativeWorkbenchView` is a data-driven component. It exposes:
+It verifies:
 
-- left/right/query/consumer/as-at/scope selectors when present;
-- Before / After / Delta graph summaries;
-- answer-changing semantic refs;
-- typed change layers;
-- explanation text;
-- unresolved comparative items.
+1. typed PostgreSQL workbench acquisition;
+2. typed runtime comparative projection;
+3. runtime/Dioxus shared/changed/one-sided parity;
+4. Before / After / Delta GraphIr construction;
+5. all three GPU draw submissions;
+6. one shared source/provenance-bearing semantic object;
+7. the same canonical VisualObjectId in Before and After;
+8. Before GPU pick == After GPU pick == shell reducer state;
+9. no semantic-authority/truth promotion;
+10. no outcome prediction.
 
-It is intentionally not populated with a synthetic default comparison. A real
-persisted comparative specimen must be supplied by the runtime/operator flow.
+## JSON / file adapters
 
-## Acceptance target
+JSON remains supported for three bounded purposes only:
 
-A real comparative specimen is acceptable when:
+- reproducible diagnostic/export receipt;
+- fixture replay;
+- explicit offline bundle.
 
-- persisted Before/After graphs are non-empty;
-- typed overlay refs resolve to actual graph semantic refs;
-- answer-changing refs have source/provenance closure;
-- canonical shared IDs are stable across panels;
-- shell/GPU pick parity holds;
-- the Delta panel renders;
-- typed explanations survive into the workbench read model;
-- no comparison path creates authority/truth or predicts an outcome.
+The reader ABI exposes optional helpers such as:
+
+```text
+export_persisted_workbench_json(...)
+replay_persisted_workbench_json(...)
+export_comparative_workbench_json(...)
+```
+
+The Dioxus legacy AU and comparative file adapters are explicitly named
+`replay_*`.
+
+Examples such as:
+
+```text
+m11_comparative_workbench
+m11_comparative_gpu_receipt
+au_legal_workbench
+au_legal_gpu_receipt
+```
+
+are replay/receipt tools. They are not the normal SensibLaw → Dioxus carrier.
+
+Likewise:
+
+```text
+m11_pabai_workbench_overlays D|C
+```
+
+is an inspection/export utility only. Normal Pabai operation passes the typed
+overlay in-process.
+
+## Fail-closed boundaries
+
+The typed runtime rejects:
+
+- non-candidate or authority-promoting workbench projections;
+- graph edges whose endpoints are absent;
+- typed overlay refs absent from either persisted graph;
+- answer-changing refs without source + provenance closure;
+- a visual comparison whose classification differs from the runtime projection.
+
+The UI/GPU layer never creates:
+
+```text
+semantic authority
+claim truth
+evidence payment
+residual payment
+winner selection
+outcome prediction
+```
