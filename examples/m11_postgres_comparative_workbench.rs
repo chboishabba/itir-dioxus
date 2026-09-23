@@ -99,8 +99,8 @@ fn print_discovery(limit: i64) -> Result<(), String> {
             triple.w0_projection_ref,
             triple.w1_projection_ref,
             triple.w2_projection_ref,
-            triple.w0_w1_changed_semantic_ref_count,
-            triple.w1_w2_changed_semantic_ref_count,
+            triple.w0_w1_delta_semantic_ref_count,
+            triple.w1_w2_delta_semantic_ref_count,
             triple.both_transitions_nontrivial,
         );
     }
