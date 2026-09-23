@@ -111,6 +111,38 @@ pub struct ThreeWayComparativeSequence {
     pub predicts_outcome: bool,
 }
 
+
+pub fn three_way_comparative_sequence_with_overlays(
+    comparison_ref: &str,
+    w0: &GraphIr,
+    w1: &GraphIr,
+    w2: &GraphIr,
+    selectors: ComparativeSelectors,
+    w0_w1_overlay: ComparativeExplanationOverlay,
+    w1_w2_overlay: ComparativeExplanationOverlay,
+) -> ThreeWayComparativeSequence {
+    ThreeWayComparativeSequence {
+        w0_to_w1: comparative_workbench_read_model(
+            format!("{comparison_ref}:w0-w1"),
+            w0,
+            w1,
+            selectors.clone(),
+            w0_w1_overlay,
+        ),
+        w1_to_w2: comparative_workbench_read_model(
+            format!("{comparison_ref}:w1-w2"),
+            w1,
+            w2,
+            selectors,
+            w1_w2_overlay,
+        ),
+        candidate_only: true,
+        creates_semantic_authority: false,
+        creates_claim_truth: false,
+        predicts_outcome: false,
+    }
+}
+
 pub fn three_way_comparative_sequence(
     comparison_ref: &str,
     w0: &GraphIr,
