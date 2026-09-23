@@ -261,3 +261,115 @@ justification refs so the empirical Pabai receipt can mechanically establish:
 W0 -> W1: D / Applicability / reviewed justification receipts
 W1 -> W2: C / Applicability / reviewed justification receipts
 ```
+
+
+## Real Postgres discovery and empirical capstone
+
+The empirical M11.3 path now begins with persisted projection discovery rather
+than hand-entered or fabricated refs.
+
+### Discover consecutive real windows
+
+```bash
+cargo run --no-default-features   --features production-data   --example m11_postgres_comparative_workbench --   --discover 200
+```
+
+Discovery groups legal-follow projections by `document_ref`, orders them by
+persisted `created_at`, and emits only consecutive same-document windows.
+
+Each pair is then evaluated through the typed comparative runtime and reports:
+
+```text
+shared
+changed
+left-only
+right-only
+has_semantic_delta
+```
+
+Each triple reports the exact semantic-delta cardinality for both transitions.
+No score or semantic meaning is inferred from chronology alone.
+
+### Probe exact Pabai triples
+
+```bash
+cargo run --no-default-features   --features production-data   --example m11_postgres_comparative_workbench --   --probe-pabai 200
+```
+
+For every consecutive real triple the probe tries the actual compiler-owned
+Pabai D/C overlays in-process. A successful probe requires:
+
+```text
+D semantic ref exists in W0/W1 typed graphs
+C semantic ref exists in W1/W2 typed graphs
+
+D.layer = Applicability
+C.layer = Applicability
+
+D.answer_changing = true
+C.answer_changing = true
+
+D.justification_refs != empty
+C.justification_refs != empty
+```
+
+A failed weld remains a failed probe and reports its exact reason. The command
+does not remap semantic refs or select a substitute triple.
+
+### Pair empirical receipts
+
+Once a real non-trivial pair has been identified:
+
+```bash
+cargo run --no-default-features   --features production-data   --example m11_postgres_comparative_workbench --   <before-projection-ref> <after-projection-ref>
+```
+
+Then on the GPU host:
+
+```bash
+cargo run --no-default-features   --features production-data,gpu   --example m11_postgres_comparative_gpu_receipt --   <before-projection-ref> <after-projection-ref>
+```
+
+### Three-way Pabai CPU + GPU capstone
+
+For a triple whose exact Pabai probe passes:
+
+```bash
+cargo run --no-default-features   --features production-data   --example m11_postgres_comparative_workbench --   --pabai <w0-projection-ref> <w1-projection-ref> <w2-projection-ref>
+```
+
+The corresponding zero-JSON GPU capstone is:
+
+```bash
+cargo run --no-default-features   --features production-data,gpu   --example m11_postgres_pabai_gpu_receipt --   <w0-projection-ref> <w1-projection-ref> <w2-projection-ref>
+```
+
+It submits six draw passes:
+
+```text
+W0->W1 Before
+W0->W1 After
+W0->W1 Delta
+
+W1->W2 Before
+W1->W2 After
+W1->W2 Delta
+```
+
+and requires D and C to be GPU-pickable provenance-bearing semantic nodes in
+their post-change and Delta panels. For each object:
+
+```text
+After VisualObjectId
+  =
+Delta VisualObjectId
+
+GPU pick After
+  =
+GPU pick Delta
+  =
+shell DomainCommand reducer state
+```
+
+This is the empirical M11.3 closure receipt. It still creates no semantic
+authority, claim truth, or outcome prediction.
