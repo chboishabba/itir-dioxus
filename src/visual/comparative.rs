@@ -305,21 +305,20 @@ pub fn comparative_proof_topology(
         if object.class == ComparativeVisualClass::Shared {
             continue;
         }
-        let source_edge = right_edge_by_semantic
-            .get(&object.semantic_ref)
-            .copied()
-            .or_else(|| left_edge_by_semantic.get(&object.semantic_ref).copied());
-        let Some(source_edge) = source_edge else {
-            continue;
-        };
+        let (source_edge, source_graph) =
+            if let Some(edge) = right_edge_by_semantic.get(&object.semantic_ref).copied() {
+                (edge, right)
+            } else if let Some(edge) = left_edge_by_semantic.get(&object.semantic_ref).copied() {
+                (edge, left)
+            } else {
+                continue;
+            };
 
-        let source_from_semantic = left
+        let source_from_semantic = source_graph
             .node(source_edge.from)
-            .or_else(|| right.node(source_edge.from))
             .map(|node| node.semantic_ref.as_str());
-        let source_to_semantic = left
+        let source_to_semantic = source_graph
             .node(source_edge.to)
-            .or_else(|| right.node(source_edge.to))
             .map(|node| node.semantic_ref.as_str());
 
         let (Some(from_semantic), Some(to_semantic)) =
