@@ -13,7 +13,7 @@ use itir_dioxus::{
         },
         selection::{reduce_selection, SelectionState},
     },
-    workbench::au_fact_review::project_persisted_au_workbench_json,
+    workbench::au_fact_review::replay_legacy_au_workbench_json,
 };
 
 const WIDTH: u32 = 128;
@@ -41,7 +41,7 @@ async fn run() -> Result<(), String> {
         .ok_or_else(|| "usage: au_legal_gpu_receipt <persisted-au-workbench.json>".to_string())?;
     let raw = fs::read_to_string(&path)
         .map_err(|error| format!("failed to read {path}: {error}"))?;
-    let projection = project_persisted_au_workbench_json(&raw, 20, 30)?;
+    let projection = replay_legacy_au_workbench_json(&raw, 20, 30)?;
 
     if projection.graph_ir.nodes.is_empty() {
         return Err("persisted AU graph has no nodes to draw/pick".into());
