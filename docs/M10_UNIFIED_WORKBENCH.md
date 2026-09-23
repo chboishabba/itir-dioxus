@@ -252,3 +252,10 @@ The receipt fails closed unless:
 
 The GPU receipt still creates no semantic authority, claim truth, or residual
 payment. Rendering and picking remain proposal/projection mechanisms.
+
+
+> **Transport note:** the JSON file used by the M10 empirical closure protocol is
+> a reproducible export/diagnostic receipt only. It is not the production
+> SensibLaw → Dioxus semantic ABI. M11 production workbench comparison uses the
+> typed Rust reader/comparative projections directly from PostgreSQL; JSON is
+> retained only for replay/export/offline bundles.
