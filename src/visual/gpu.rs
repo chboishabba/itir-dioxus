@@ -160,6 +160,164 @@ fn encode_edge_vertices(vertices: &[GraphGpuEdgeVertex]) -> Vec<u8> {
     bytes
 }
 
+
+const GRAPH_SHADER: &str = r#"
+struct VertexOut {
+    @builtin(position) position: vec4<f32>,
+};
+
+@vertex
+fn node_vs(
+    @location(0) center: vec2<f32>,
+    @builtin(vertex_index) vertex_index: u32,
+) -> VertexOut {
+    var offsets = array<vec2<f32>, 6>(
+        vec2<f32>(-0.025, -0.025),
+        vec2<f32>( 0.025, -0.025),
+        vec2<f32>( 0.025,  0.025),
+        vec2<f32>(-0.025, -0.025),
+        vec2<f32>( 0.025,  0.025),
+        vec2<f32>(-0.025,  0.025),
+    );
+    var out: VertexOut;
+    out.position = vec4<f32>(center + offsets[vertex_index], 0.0, 1.0);
+    return out;
+}
+
+@vertex
+fn edge_vs(@location(0) position: vec2<f32>) -> VertexOut {
+    var out: VertexOut;
+    out.position = vec4<f32>(position, 0.0, 1.0);
+    return out;
+}
+
+@fragment
+fn node_fs() -> @location(0) vec4<f32> {
+    return vec4<f32>(0.12, 0.12, 0.12, 1.0);
+}
+
+@fragment
+fn edge_fs() -> @location(0) vec4<f32> {
+    return vec4<f32>(0.45, 0.45, 0.45, 1.0);
+}
+"#;
+
+pub struct GraphRenderer {
+    node_pipeline: wgpu::RenderPipeline,
+    edge_pipeline: wgpu::RenderPipeline,
+}
+
+impl GraphRenderer {
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("itir-proof-graph-shader"),
+            source: wgpu::ShaderSource::Wgsl(GRAPH_SHADER.into()),
+        });
+        let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("itir-proof-graph-layout"),
+            bind_group_layouts: &[],
+            push_constant_ranges: &[],
+        });
+
+        let node_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("itir-proof-graph-node-pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("node_vs"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: 20,
+                    step_mode: wgpu::VertexStepMode::Instance,
+                    attributes: &[wgpu::VertexAttribute {
+                        format: wgpu::VertexFormat::Float32x2,
+                        offset: 0,
+                        shader_location: 0,
+                    }],
+                }],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("node_fs"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::TriangleList,
+                ..Default::default()
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
+
+        let edge_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("itir-proof-graph-edge-pipeline"),
+            layout: Some(&layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("edge_vs"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: 16,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &[wgpu::VertexAttribute {
+                        format: wgpu::VertexFormat::Float32x2,
+                        offset: 0,
+                        shader_location: 0,
+                    }],
+                }],
+            },
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("edge_fs"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format,
+                    blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            primitive: wgpu::PrimitiveState {
+                topology: wgpu::PrimitiveTopology::LineList,
+                ..Default::default()
+            },
+            depth_stencil: None,
+            multisample: wgpu::MultisampleState::default(),
+            multiview: None,
+            cache: None,
+        });
+
+        Self {
+            node_pipeline,
+            edge_pipeline,
+        }
+    }
+
+    pub fn draw<'pass>(
+        &'pass self,
+        pass: &mut wgpu::RenderPass<'pass>,
+        buffers: &'pass GraphGpuBuffers,
+    ) {
+        if buffers.edge_vertex_count > 0 {
+            pass.set_pipeline(&self.edge_pipeline);
+            pass.set_vertex_buffer(0, buffers.edge_buffer.slice(..));
+            pass.draw(0..buffers.edge_vertex_count, 0..1);
+        }
+
+        if buffers.node_vertex_count > 0 {
+            pass.set_pipeline(&self.node_pipeline);
+            pass.set_vertex_buffer(0, buffers.node_buffer.slice(..));
+            pass.draw(0..6, 0..buffers.node_vertex_count);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
