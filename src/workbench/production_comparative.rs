@@ -53,8 +53,8 @@ pub struct PostgresComparativeTripleCandidate {
     pub w0_projection_ref: String,
     pub w1_projection_ref: String,
     pub w2_projection_ref: String,
-    pub w0_w1_changed_semantic_ref_count: usize,
-    pub w1_w2_changed_semantic_ref_count: usize,
+    pub w0_w1_delta_semantic_ref_count: usize,
+    pub w1_w2_delta_semantic_ref_count: usize,
     pub both_transitions_nontrivial: bool,
 }
 
@@ -167,8 +167,8 @@ pub fn discover_postgres_comparative_candidates(
             w0_projection_ref: triple.w0_projection_ref,
             w1_projection_ref: triple.w1_projection_ref,
             w2_projection_ref: triple.w2_projection_ref,
-            w0_w1_changed_semantic_ref_count: first,
-            w1_w2_changed_semantic_ref_count: second,
+            w0_w1_delta_semantic_ref_count: first,
+            w1_w2_delta_semantic_ref_count: second,
             both_transitions_nontrivial: first > 0 && second > 0,
         });
     }
@@ -222,10 +222,41 @@ pub fn probe_postgres_pabai_triples(
                 Some(&d_overlay),
                 Some(&c_overlay),
             )?;
-            if typed.w0_to_w1.change_annotations.is_empty()
-                || typed.w1_to_w2.change_annotations.is_empty()
-            {
-                return Err("Pabai overlay produced no typed change annotations".into());
+            let d = typed
+                .w0_to_w1
+                .change_annotations
+                .iter()
+                .find(|annotation| {
+                    annotation.semantic_ref
+                        == "coordinate:pabai:comparative:defeater"
+                })
+                .ok_or_else(|| "Pabai W0->W1 typed D annotation missing".to_string())?;
+            let c = typed
+                .w1_to_w2
+                .change_annotations
+                .iter()
+                .find(|annotation| {
+                    annotation.semantic_ref
+                        == "coordinate:pabai:comparative:counter-defeater"
+                })
+                .ok_or_else(|| "Pabai W1->W2 typed C annotation missing".to_string())?;
+
+            for (label, annotation) in [("D", d), ("C", c)] {
+                if annotation.layer != ReaderChangeLayer::Applicability {
+                    return Err(format!(
+                        "Pabai {label} annotation is not typed at Applicability"
+                    ));
+                }
+                if !annotation.answer_changing {
+                    return Err(format!(
+                        "Pabai {label} annotation is not marked answer-changing"
+                    ));
+                }
+                if annotation.justification_refs.is_empty() {
+                    return Err(format!(
+                        "Pabai {label} annotation lacks justification receipts"
+                    ));
+                }
             }
             Ok(())
         })();
