@@ -24,8 +24,35 @@ pub struct ComparativeSelectors {
     pub scope_ref: Option<String>,
 }
 
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum ComparativePresentationChangeLayer {
+    World,
+    WorldEvidence,
+    Observation,
+    Representation,
+    Theory,
+    Belief,
+    ConsumerProjection,
+    Review,
+    Scope,
+    Applicability,
+    ProofOutcome,
+    ResidualOutcome,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ComparativePresentationAnnotation {
+    pub semantic_ref: String,
+    pub layer: ComparativePresentationChangeLayer,
+    pub justification_refs: Vec<String>,
+    pub explanation_ref: Option<String>,
+    pub answer_changing: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ComparativeExplanationOverlay {
+    pub typed_change_annotations: BTreeMap<String, ComparativePresentationAnnotation>,
     pub change_layer_by_semantic_ref: BTreeMap<String, String>,
     pub explanation_by_semantic_ref: BTreeMap<String, String>,
     pub answer_changing_semantic_refs: BTreeSet<String>,
@@ -37,6 +64,7 @@ pub struct ComparativeExplanationOverlay {
 impl ComparativeExplanationOverlay {
     pub fn empty() -> Self {
         Self {
+            typed_change_annotations: BTreeMap::new(),
             change_layer_by_semantic_ref: BTreeMap::new(),
             explanation_by_semantic_ref: BTreeMap::new(),
             answer_changing_semantic_refs: BTreeSet::new(),
@@ -286,6 +314,7 @@ mod tests {
                 scope_ref: None,
             },
             ComparativeExplanationOverlay {
+                typed_change_annotations: BTreeMap::new(),
                 change_layer_by_semantic_ref: BTreeMap::from([(
                     "semantic:D".into(),
                     "Applicability".into(),
