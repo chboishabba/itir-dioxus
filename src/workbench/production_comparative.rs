@@ -18,11 +18,10 @@ use sensiblaw_reader_model::{
 
 use crate::visual::{
     command::VisualObjectId,
-    ir::{GraphIr, VisualEdge, VisualNode},
+    ir::{stable_visual_id, GraphIr, VisualEdge, VisualNode},
 };
 
 use super::{
-    au_fact_review::stable_visual_id,
     comparative::{
         comparative_workbench_read_model,
         three_way_comparative_sequence_with_overlays,
