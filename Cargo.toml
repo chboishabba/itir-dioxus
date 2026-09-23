@@ -25,3 +25,8 @@ pretty_assertions = "1.4"
 name = "au_legal_gpu_receipt"
 path = "examples/au_legal_gpu_receipt.rs"
 required-features = ["gpu"]
+
+[[example]]
+name = "m11_comparative_gpu_receipt"
+path = "examples/m11_comparative_gpu_receipt.rs"
+required-features = ["gpu"]
