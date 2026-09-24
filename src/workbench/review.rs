@@ -5,7 +5,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use sensiblaw_pg_source_store::{
     apply_persisted_review_command, load_database_config, load_review_queue,
-    ReviewAction, ReviewCommand, ReviewItem,
+    ReviewAction, ReviewCommand, ReviewItem, ReviewReceipt,
 };
 use sensiblaw_reader_model::{project_review_queue, ReviewQueueProjection};
 
@@ -40,7 +40,7 @@ pub fn execute_review_action(
     reviewer_ref: &str,
     qualification_ref: Option<String>,
     evidence_request_ref: Option<String>,
-) -> Result<ReviewItem, String> {
+) -> Result<(ReviewReceipt, ReviewItem), String> {
     if review_item_ref.trim().is_empty() || reviewer_ref.trim().is_empty() {
         return Err("review item and reviewer refs are required".into());
     }
@@ -62,10 +62,8 @@ pub fn execute_review_action(
     };
 
     let config = load_database_config(None).map_err(|error| error.to_string())?;
-    let (_receipt, item) =
-        apply_persisted_review_command(&config, &command)
-            .map_err(|error| error.to_string())?;
-    Ok(item)
+    apply_persisted_review_command(&config, &command)
+        .map_err(|error| error.to_string())
 }
 
 #[cfg(test)]
