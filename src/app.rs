@@ -279,6 +279,7 @@ pub fn SemanticTraceInspectorView(traces: Vec<SemanticTracePath>) -> Element {
 #[cfg(feature = "production-data")]
 #[component]
 fn SemanticTraceCard(trace: SemanticTracePath) -> Element {
+    let event_label = trace.event_ref.as_deref().unwrap_or("—");
     let review_label = trace
         .parse
         .as_ref()
