@@ -571,3 +571,122 @@ fn FactsClaimsWorkspaceView(views: Vec<PropositionContestationView>) -> Element 
         }
     }
 }
+
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn ReviewWorkspaceView(
+    model: crate::workbench::review::ProductionReviewWorkspace,
+) -> Element {
+    rsx! {
+        section {
+            style: "margin-top: 2rem;",
+            header {
+                h2 { "Review" }
+                p {
+                    "Portable review queue · parse, observation, claim, event, chronology, authority, research, legal treatment and handoff."
+                }
+                p {
+                    style: "font-size: 0.9rem; opacity: 0.75;",
+                    "Review changes workflow state only. It does not create semantic authority, applicability, or claim truth."
+                }
+            }
+
+            if model.queue.items.is_empty() {
+                p { "No persisted review items are currently queued." }
+            } else {
+                for item in model.queue.items.iter() {
+                    {
+                        let kind = format!("{:?}", item.item_kind);
+                        let status = format!("{:?}", item.current_status);
+                        let provenance_count = item.provenance_refs.len();
+                        let source_count = item.source_refs.len();
+                        let consumer_count = item.affected_consumer_refs.len();
+                        rsx! {
+                            article {
+                                style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
+                                header {
+                                    strong { "{kind}" }
+                                    span { " · {status}" }
+                                    div {
+                                        style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                        "{item.review_item_ref}"
+                                    }
+                                }
+
+                                p { "{item.reason}" }
+
+                                dl {
+                                    style: "display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.25rem 0.75rem;",
+                                    dt { "Semantic object" }
+                                    dd { "{item.semantic_ref}" }
+                                    dt { "Provenance" }
+                                    dd { "{provenance_count} refs" }
+                                    dt { "Sources" }
+                                    dd { "{source_count} refs" }
+                                    dt { "Affected consumers" }
+                                    dd { "{consumer_count} refs" }
+                                }
+
+                                if !item.source_refs.is_empty() {
+                                    details {
+                                        style: "margin-top: 0.6rem;",
+                                        summary { "Source refs" }
+                                        ul {
+                                            for source_ref in item.source_refs.iter() {
+                                                li { "{source_ref}" }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if !item.provenance_refs.is_empty() {
+                                    details {
+                                        style: "margin-top: 0.4rem;",
+                                        summary { "Provenance refs" }
+                                        ul {
+                                            for provenance_ref in item.provenance_refs.iter() {
+                                                li { "{provenance_ref}" }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if !item.affected_consumer_refs.is_empty() {
+                                    details {
+                                        style: "margin-top: 0.4rem;",
+                                        summary { "Affected consumers" }
+                                        ul {
+                                            for consumer_ref in item.affected_consumer_refs.iter() {
+                                                li { "{consumer_ref}" }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                div {
+                                    style: "margin-top: 0.8rem;",
+                                    strong { "Available typed actions" }
+                                    div {
+                                        style: "display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem;",
+                                        for action in item.available_actions.iter() {
+                                            {
+                                                let action_label = format!("{:?}", action);
+                                                rsx! {
+                                                    span {
+                                                        style: "border: 1px solid #aaa; border-radius: 999px; padding: 0.2rem 0.5rem; font-size: 0.8rem;",
+                                                        "{action_label}"
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
