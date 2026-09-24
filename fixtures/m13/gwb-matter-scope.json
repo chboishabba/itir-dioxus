@@ -1,0 +1,76 @@
+{
+  "schema": "sensiblaw.matter-scope.v0_1",
+  "matter_ref": "matter:gwb:m13-capstone",
+  "event_refs": [
+    "event:gwb:m13:capstone:1"
+  ],
+  "operational_dates": [],
+  "context": {
+    "purpose": "research-publication",
+    "role": "researcher",
+    "disclosure_boundary": "role-scoped",
+    "knowledge_time_cut_ref": "knowledge-cut:gwb:m13",
+    "sealed_refs": []
+  },
+  "visibility": [
+    {
+      "semantic_ref": "event:gwb:m13:capstone:1",
+      "allowed_roles": ["researcher"],
+      "allowed_purposes": ["research-publication"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    },
+    {
+      "semantic_ref": "claim:gwb:m13:capstone:a",
+      "allowed_roles": ["researcher"],
+      "allowed_purposes": ["research-publication"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    },
+    {
+      "semantic_ref": "claim:gwb:m13:capstone:b",
+      "allowed_roles": ["researcher"],
+      "allowed_purposes": ["research-publication"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    },
+    {
+      "semantic_ref": "review:gwb:m13:capstone",
+      "allowed_roles": ["researcher"],
+      "allowed_purposes": ["research-publication"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    }
+  ],
+  "knowledge_timeline": [
+    {
+      "semantic_ref": "event:gwb:m13:capstone:1",
+      "source_revision_ref": "source-revision:gwb:m13:capstone:book",
+      "knowledge_time_ref": "knowledge-time:gwb:m13:book",
+      "knowledge_membership": "known-at-cut",
+      "source_role_ref": "book"
+    },
+    {
+      "semantic_ref": "claim:gwb:m13:capstone:a",
+      "source_revision_ref": "source-revision:gwb:m13:capstone:web",
+      "knowledge_time_ref": "knowledge-time:gwb:m13:web",
+      "knowledge_membership": "known-at-cut",
+      "source_role_ref": "web"
+    }
+  ],
+  "legal_proof_refs": [],
+  "research_refs": [
+    "review:gwb:m13:capstone"
+  ],
+  "work_product_refs": [],
+  "handoff_refs": [
+    "handoff:gwb:m13-capstone"
+  ],
+  "no_event_refs": [],
+  "acceptance_roles": [],
+  "procedural_significance_review_refs": []
+}
