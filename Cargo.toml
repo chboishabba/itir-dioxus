@@ -117,3 +117,9 @@ required-features = ["production-data"]
 name = "m13_mary_acceptance_receipt"
 path = "examples/m13_mary_acceptance_receipt.rs"
 required-features = ["production-data"]
+
+
+[[example]]
+name = "m13_cohesive_matter_acceptance_receipt"
+path = "examples/m13_cohesive_matter_acceptance_receipt.rs"
+required-features = ["production-data"]
