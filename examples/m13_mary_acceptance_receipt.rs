@@ -28,6 +28,29 @@ fn main() -> Result<(), String> {
         "context_exclusion_count={}",
         receipt.context_exclusion_count
     );
+    println!("exact_event_count={}", receipt.exact_event_refs.len());
+    println!(
+        "approximate_event_count={}",
+        receipt.approximate_event_refs.len()
+    );
+    println!("relative_event_count={}", receipt.relative_event_refs.len());
+    println!("undated_event_count={}", receipt.undated_event_refs.len());
+    println!(
+        "unknown_date_event_count={}",
+        receipt.unknown_date_event_refs.len()
+    );
+    println!(
+        "event_without_source_trace_count={}",
+        receipt.event_without_source_trace_refs.len()
+    );
+    println!(
+        "claim_without_source_trace_count={}",
+        receipt.claim_without_source_trace_refs.len()
+    );
+    println!(
+        "source_trace_without_downstream_count={}",
+        receipt.source_trace_without_downstream_refs.len()
+    );
     println!(
         "missing_date_event_count={}",
         receipt.missing_date_event_refs.len()
@@ -90,8 +113,32 @@ fn main() -> Result<(), String> {
         return Err("M13 acceptance receipt crossed semantic boundary".into());
     }
 
+    for reference in &receipt.exact_event_refs {
+        println!("exact_event={reference}");
+    }
+    for reference in &receipt.approximate_event_refs {
+        println!("approximate_event={reference}");
+    }
+    for reference in &receipt.relative_event_refs {
+        println!("relative_event={reference}");
+    }
+    for reference in &receipt.undated_event_refs {
+        println!("undated_event={reference}");
+    }
+    for reference in &receipt.unknown_date_event_refs {
+        println!("unknown_date_event={reference}");
+    }
     for reference in &receipt.missing_date_event_refs {
         println!("missing_date={reference}");
+    }
+    for reference in &receipt.event_without_source_trace_refs {
+        println!("event_without_source_trace={reference}");
+    }
+    for reference in &receipt.claim_without_source_trace_refs {
+        println!("claim_without_source_trace={reference}");
+    }
+    for reference in &receipt.source_trace_without_downstream_refs {
+        println!("source_trace_without_downstream={reference}");
     }
     for reference in &receipt.missing_actor_claim_refs {
         println!("missing_actor={reference}");
