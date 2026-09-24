@@ -4,6 +4,8 @@ use dioxus::prelude::*;
 use sensiblaw_reader_model::{
     ChronologyPlacementKind, PropositionContestationView, SemanticTracePath, TraceReviewState,
 };
+#[cfg(feature = "production-data")]
+use sensiblaw_pg_source_store::{ReviewAction, ReviewItem};
 
 use crate::workbench::{
     comparative::ComparativeWorkbenchReadModel, wave5_personal_handoff_read_model,
@@ -588,7 +590,7 @@ pub fn ReviewWorkspaceView(
                 }
                 p {
                     style: "font-size: 0.9rem; opacity: 0.75;",
-                    "Review changes workflow state only. It does not create semantic authority, applicability, or claim truth."
+                    "Actions run through the typed SLR reducer and persist a ReviewReceipt. Review state never creates semantic authority, applicability, or claim truth."
                 }
             }
 
@@ -596,95 +598,205 @@ pub fn ReviewWorkspaceView(
                 p { "No persisted review items are currently queued." }
             } else {
                 for item in model.queue.items.iter() {
-                    {
-                        let kind = format!("{:?}", item.item_kind);
-                        let status = format!("{:?}", item.current_status);
-                        let provenance_count = item.provenance_refs.len();
-                        let source_count = item.source_refs.len();
-                        let consumer_count = item.affected_consumer_refs.len();
-                        rsx! {
-                            article {
-                                style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
-                                header {
-                                    strong { "{kind}" }
-                                    span { " · {status}" }
-                                    div {
-                                        style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
-                                        "{item.review_item_ref}"
-                                    }
-                                }
+                    LiveReviewItemCard { item: item.clone() }
+                }
+            }
+        }
+    }
+}
 
-                                p { "{item.reason}" }
+#[cfg(feature = "production-data")]
+#[component]
+fn LiveReviewItemCard(item: ReviewItem) -> Element {
+    let mut live_item = use_signal(|| item);
+    let mut reviewer_ref = use_signal(|| "operator:local".to_owned());
+    let mut qualification_ref = use_signal(String::new);
+    let mut evidence_request_ref = use_signal(String::new);
+    let mut action_result = use_signal(|| None::<String>);
 
-                                dl {
-                                    style: "display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.25rem 0.75rem;",
-                                    dt { "Semantic object" }
-                                    dd { "{item.semantic_ref}" }
-                                    dt { "Provenance" }
-                                    dd { "{provenance_count} refs" }
-                                    dt { "Sources" }
-                                    dd { "{source_count} refs" }
-                                    dt { "Affected consumers" }
-                                    dd { "{consumer_count} refs" }
-                                }
+    let snapshot = live_item.read().clone();
+    let kind = format!("{:?}", snapshot.item_kind);
+    let status = format!("{:?}", snapshot.current_status);
+    let provenance_count = snapshot.provenance_refs.len();
+    let source_count = snapshot.source_refs.len();
+    let consumer_count = snapshot.affected_consumer_refs.len();
 
-                                if !item.source_refs.is_empty() {
-                                    details {
-                                        style: "margin-top: 0.6rem;",
-                                        summary { "Source refs" }
-                                        ul {
-                                            for source_ref in item.source_refs.iter() {
-                                                li { "{source_ref}" }
+    rsx! {
+        article {
+            style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
+            header {
+                strong { "{kind}" }
+                span { " · {status}" }
+                div {
+                    style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                    "{snapshot.review_item_ref}"
+                }
+            }
+
+            p { "{snapshot.reason}" }
+
+            dl {
+                style: "display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.25rem 0.75rem;",
+                dt { "Semantic object" }
+                dd { "{snapshot.semantic_ref}" }
+                dt { "Provenance" }
+                dd { "{provenance_count} refs" }
+                dt { "Sources" }
+                dd { "{source_count} refs" }
+                dt { "Affected consumers" }
+                dd { "{consumer_count} refs" }
+            }
+
+            if !snapshot.source_refs.is_empty() {
+                details {
+                    style: "margin-top: 0.6rem;",
+                    summary { "Source refs" }
+                    ul {
+                        for source_ref in snapshot.source_refs.iter() {
+                            li { "{source_ref}" }
+                        }
+                    }
+                }
+            }
+
+            if !snapshot.provenance_refs.is_empty() {
+                details {
+                    style: "margin-top: 0.4rem;",
+                    summary { "Provenance refs" }
+                    ul {
+                        for provenance_ref in snapshot.provenance_refs.iter() {
+                            li { "{provenance_ref}" }
+                        }
+                    }
+                }
+            }
+
+            if !snapshot.affected_consumer_refs.is_empty() {
+                details {
+                    style: "margin-top: 0.4rem;",
+                    summary { "Affected consumers" }
+                    ul {
+                        for consumer_ref in snapshot.affected_consumer_refs.iter() {
+                            li { "{consumer_ref}" }
+                        }
+                    }
+                }
+            }
+
+            section {
+                style: "margin-top: 0.8rem; border-top: 1px solid #ddd; padding-top: 0.8rem;",
+                strong { "Live typed actions" }
+
+                label {
+                    style: "display: block; margin-top: 0.6rem; font-size: 0.85rem;",
+                    "Reviewer ref"
+                    input {
+                        style: "display: block; width: min(100%, 32rem); margin-top: 0.2rem;",
+                        value: "{reviewer_ref}",
+                        oninput: move |event| reviewer_ref.set(event.value())
+                    }
+                }
+
+                if snapshot.available_actions.contains(&ReviewAction::Qualify) {
+                    label {
+                        style: "display: block; margin-top: 0.6rem; font-size: 0.85rem;",
+                        "Qualification ref / note"
+                        input {
+                            style: "display: block; width: min(100%, 40rem); margin-top: 0.2rem;",
+                            placeholder: "required for Qualify",
+                            oninput: move |event| qualification_ref.set(event.value())
+                        }
+                    }
+                }
+
+                if snapshot.available_actions.contains(&ReviewAction::RequestEvidence) {
+                    label {
+                        style: "display: block; margin-top: 0.6rem; font-size: 0.85rem;",
+                        "Evidence request ref / note"
+                        input {
+                            style: "display: block; width: min(100%, 40rem); margin-top: 0.2rem;",
+                            placeholder: "required for Request Evidence",
+                            oninput: move |event| evidence_request_ref.set(event.value())
+                        }
+                    }
+                }
+
+                div {
+                    style: "display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.7rem;",
+                    for action in snapshot.available_actions.iter().copied() {
+                        {
+                            let action_label = format!("{:?}", action);
+                            rsx! {
+                                button {
+                                    style: "border: 1px solid #888; border-radius: 999px; padding: 0.35rem 0.7rem; cursor: pointer;",
+                                    onclick: move |_| {
+                                        let reviewer = reviewer_ref.read().trim().to_owned();
+                                        let qualification = qualification_ref.read().trim().to_owned();
+                                        let evidence = evidence_request_ref.read().trim().to_owned();
+
+                                        let qualification = if action == ReviewAction::Qualify {
+                                            if qualification.is_empty() {
+                                                action_result.set(Some(
+                                                    "Qualify requires an explicit qualification ref / note.".into()
+                                                ));
+                                                return;
+                                            }
+                                            Some(qualification)
+                                        } else {
+                                            None
+                                        };
+
+                                        let evidence_request = if action == ReviewAction::RequestEvidence {
+                                            if evidence.is_empty() {
+                                                action_result.set(Some(
+                                                    "RequestEvidence requires an explicit evidence-request ref / note.".into()
+                                                ));
+                                                return;
+                                            }
+                                            Some(evidence)
+                                        } else {
+                                            None
+                                        };
+
+                                        match crate::workbench::review::execute_review_action(
+                                            &snapshot.review_item_ref,
+                                            action,
+                                            &reviewer,
+                                            qualification,
+                                            evidence_request,
+                                        ) {
+                                            Ok((receipt, persisted)) => {
+                                                let effect = format!("{:?}", receipt.effect);
+                                                let new_status = format!("{:?}", persisted.current_status);
+                                                live_item.set(persisted);
+                                                action_result.set(Some(format!(
+                                                    "Persisted {action_label}: effect={effect}; status={new_status}"
+                                                )));
+                                            }
+                                            Err(error) => {
+                                                action_result.set(Some(format!(
+                                                    "Review action failed: {error}"
+                                                )));
                                             }
                                         }
-                                    }
-                                }
-
-                                if !item.provenance_refs.is_empty() {
-                                    details {
-                                        style: "margin-top: 0.4rem;",
-                                        summary { "Provenance refs" }
-                                        ul {
-                                            for provenance_ref in item.provenance_refs.iter() {
-                                                li { "{provenance_ref}" }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if !item.affected_consumer_refs.is_empty() {
-                                    details {
-                                        style: "margin-top: 0.4rem;",
-                                        summary { "Affected consumers" }
-                                        ul {
-                                            for consumer_ref in item.affected_consumer_refs.iter() {
-                                                li { "{consumer_ref}" }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                div {
-                                    style: "margin-top: 0.8rem;",
-                                    strong { "Available typed actions" }
-                                    div {
-                                        style: "display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem;",
-                                        for action in item.available_actions.iter() {
-                                            {
-                                                let action_label = format!("{:?}", action);
-                                                rsx! {
-                                                    span {
-                                                        style: "border: 1px solid #aaa; border-radius: 999px; padding: 0.2rem 0.5rem; font-size: 0.8rem;",
-                                                        "{action_label}"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                                    },
+                                    "{action_label}"
                                 }
                             }
                         }
                     }
+                }
+
+                if let Some(result) = action_result.read().as_ref() {
+                    p {
+                        style: "font-size: 0.85rem; margin-top: 0.6rem;",
+                        "{result}"
+                    }
+                }
+
+                p {
+                    style: "font-size: 0.78rem; opacity: 0.7;",
+                    "OpenSource and FollowAuthority are receipted navigation requests and preserve review status. RequestEvidence moves to NeedsEvidence; none of these actions promotes claim truth."
                 }
             }
         }
