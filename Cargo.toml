@@ -19,9 +19,9 @@ serde_json = "1.0"
 wgpu = { version = "29.0.3", optional = true }
 pollster = { version = "0.4", optional = true }
 postgres = { version = "0.19", optional = true }
-sensiblaw-reader-model = { git = "https://github.com/chboishabba/slr", rev = "7ec10d20c8d1d1ec57cc70ea77429af8132d4c63", package = "sensiblaw-reader-model", optional = true }
-sensiblaw-pg-source-store = { git = "https://github.com/chboishabba/slr", rev = "7ec10d20c8d1d1ec57cc70ea77429af8132d4c63", package = "sensiblaw-pg-source-store", optional = true }
-sensiblaw-legal-runtime = { git = "https://github.com/chboishabba/slr", rev = "7ec10d20c8d1d1ec57cc70ea77429af8132d4c63", package = "sensiblaw-legal-runtime", optional = true }
+sensiblaw-reader-model = { git = "https://github.com/chboishabba/slr", rev = "9ebf7408f85fb0e0a25afe76cbd73ded5b0e6207", package = "sensiblaw-reader-model", optional = true }
+sensiblaw-pg-source-store = { git = "https://github.com/chboishabba/slr", rev = "9ebf7408f85fb0e0a25afe76cbd73ded5b0e6207", package = "sensiblaw-pg-source-store", optional = true }
+sensiblaw-legal-runtime = { git = "https://github.com/chboishabba/slr", rev = "9ebf7408f85fb0e0a25afe76cbd73ded5b0e6207", package = "sensiblaw-legal-runtime", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4"
@@ -73,4 +73,28 @@ required-features = ["production-data"]
 [[example]]
 name = "gwb_matter_receipt"
 path = "examples/gwb_matter_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "s28_event_discovery_receipt"
+path = "examples/s28_event_discovery_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "s28_operational_timeline_receipt"
+path = "examples/s28_operational_timeline_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "s29_live_review_action_receipt"
+path = "examples/s29_live_review_action_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "s28_chat_source_receipt"
+path = "examples/s28_chat_source_receipt.rs"
 required-features = ["production-data"]
