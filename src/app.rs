@@ -13,6 +13,33 @@ use crate::workbench::{
 };
 
 pub fn app() -> Element {
+    #[cfg(feature = "production-data")]
+    if let Ok(scope_path) = std::env::var("SENSIBLAW_MATTER_SCOPE") {
+        let loaded = crate::workbench::matter_scope::load_matter_scope_manifest(&scope_path)
+            .and_then(crate::workbench::matter::load_generic_matter_workspace);
+        return match loaded {
+            Ok(model) => rsx! {
+                document::Title { "SensibLaw Matter" }
+                main {
+                    style: "font-family: sans-serif; max-width: 1180px; margin: 0 auto; padding: 2rem;",
+                    crate::matter_ui::GenericMatterWorkspaceView { model }
+                }
+            },
+            Err(error) => rsx! {
+                document::Title { "SensibLaw Matter · load error" }
+                main {
+                    style: "font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem;",
+                    h1 { "Matter could not be opened" }
+                    p { "{error}" }
+                    p {
+                        style: "font-size: 0.85rem; opacity: 0.75;",
+                        "The existing canonical world is unchanged. Fix the explicit scope/context or persisted-data receipt and reload."
+                    }
+                }
+            },
+        };
+    }
+
     let model = wave5_personal_handoff_read_model();
 
     rsx! {
