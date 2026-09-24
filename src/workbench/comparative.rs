@@ -1,0 +1,485 @@
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
+
+use crate::visual::{
+    command::{DomainCommand, VisualObjectId},
+    comparative::{comparative_proof_topology, ComparativeProofTopology},
+    ir::{GraphIr, VisualObjectInspection},
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ComparativePanel {
+    Before,
+    After,
+    Delta,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ComparativeSelectors {
+    pub left_ref: String,
+    pub right_ref: String,
+    pub query_ref: Option<String>,
+    pub consumer_ref: Option<String>,
+    pub as_at_ref: Option<String>,
+    pub scope_ref: Option<String>,
+}
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum ComparativePresentationChangeLayer {
+    World,
+    WorldEvidence,
+    Observation,
+    Representation,
+    Theory,
+    Belief,
+    ConsumerProjection,
+    Review,
+    Scope,
+    Applicability,
+    ProofOutcome,
+    ResidualOutcome,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ComparativePresentationAnnotation {
+    pub semantic_ref: String,
+    pub layer: ComparativePresentationChangeLayer,
+    pub justification_refs: Vec<String>,
+    pub explanation_ref: Option<String>,
+    pub answer_changing: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ComparativeExplanationOverlay {
+    pub typed_change_annotations: BTreeMap<String, ComparativePresentationAnnotation>,
+    pub change_layer_by_semantic_ref: BTreeMap<String, String>,
+    pub explanation_by_semantic_ref: BTreeMap<String, String>,
+    pub answer_changing_semantic_refs: BTreeSet<String>,
+    pub unresolved_semantic_refs: BTreeSet<String>,
+    pub creates_semantic_authority: bool,
+    pub creates_claim_truth: bool,
+}
+
+impl ComparativeExplanationOverlay {
+    pub fn empty() -> Self {
+        Self {
+            typed_change_annotations: BTreeMap::new(),
+            change_layer_by_semantic_ref: BTreeMap::new(),
+            explanation_by_semantic_ref: BTreeMap::new(),
+            answer_changing_semantic_refs: BTreeSet::new(),
+            unresolved_semantic_refs: BTreeSet::new(),
+            creates_semantic_authority: false,
+            creates_claim_truth: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ComparativeWorkbenchReadModel {
+    pub topology: ComparativeProofTopology,
+    pub selectors: ComparativeSelectors,
+    pub explanation_overlay: ComparativeExplanationOverlay,
+    pub candidate_only: bool,
+    pub creates_semantic_authority: bool,
+    pub creates_claim_truth: bool,
+    pub predicts_outcome: bool,
+}
+
+impl ComparativeWorkbenchReadModel {
+    pub fn select_command(
+        &self,
+        _panel: ComparativePanel,
+        object_id: VisualObjectId,
+    ) -> DomainCommand {
+        // Deliberately reuse the existing command language. Because the topology
+        // canonicalizes semantic object IDs, selecting the same semantic object
+        // in any panel emits the same domain command.
+        DomainCommand::SelectObject(object_id)
+    }
+
+    pub fn inspect(
+        &self,
+        panel: ComparativePanel,
+        object_id: VisualObjectId,
+    ) -> Option<VisualObjectInspection> {
+        match panel {
+            ComparativePanel::Before => self.topology.before.inspect_object(object_id),
+            ComparativePanel::After => self.topology.after.inspect_object(object_id),
+            ComparativePanel::Delta => self.topology.delta.inspect_object(object_id),
+        }
+    }
+}
+
+
+fn apply_typed_answer_change_emphasis(
+    topology: &mut ComparativeProofTopology,
+    overlay: &ComparativeExplanationOverlay,
+) {
+    for node in &mut topology.delta.nodes {
+        let Some(annotation) = overlay.typed_change_annotations.get(&node.semantic_ref) else {
+            continue;
+        };
+        if !annotation.answer_changing {
+            continue;
+        }
+        node.kind = format!(
+            "answer-changing:{:?}:{}",
+            annotation.layer,
+            node.kind
+        );
+    }
+    for edge in &mut topology.delta.edges {
+        let Some(annotation) = overlay.typed_change_annotations.get(&edge.semantic_ref) else {
+            continue;
+        };
+        if !annotation.answer_changing {
+            continue;
+        }
+        edge.kind = format!(
+            "answer-changing:{:?}:{}",
+            annotation.layer,
+            edge.kind
+        );
+    }
+}
+
+pub fn comparative_workbench_read_model(
+    comparison_ref: impl Into<String>,
+    left: &GraphIr,
+    right: &GraphIr,
+    selectors: ComparativeSelectors,
+    explanation_overlay: ComparativeExplanationOverlay,
+) -> ComparativeWorkbenchReadModel {
+    let mut topology = comparative_proof_topology(comparison_ref, left, right);
+    apply_typed_answer_change_emphasis(&mut topology, &explanation_overlay);
+    ComparativeWorkbenchReadModel {
+        topology,
+        selectors,
+        explanation_overlay,
+        candidate_only: true,
+        creates_semantic_authority: false,
+        creates_claim_truth: false,
+        predicts_outcome: false,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ThreeWayComparativeSequence {
+    pub w0_to_w1: ComparativeWorkbenchReadModel,
+    pub w1_to_w2: ComparativeWorkbenchReadModel,
+    pub candidate_only: bool,
+    pub creates_semantic_authority: bool,
+    pub creates_claim_truth: bool,
+    pub predicts_outcome: bool,
+}
+
+
+pub fn three_way_comparative_sequence_with_overlays(
+    comparison_ref: &str,
+    w0: &GraphIr,
+    w1: &GraphIr,
+    w2: &GraphIr,
+    selectors: ComparativeSelectors,
+    w0_w1_overlay: ComparativeExplanationOverlay,
+    w1_w2_overlay: ComparativeExplanationOverlay,
+) -> ThreeWayComparativeSequence {
+    ThreeWayComparativeSequence {
+        w0_to_w1: comparative_workbench_read_model(
+            format!("{comparison_ref}:w0-w1"),
+            w0,
+            w1,
+            selectors.clone(),
+            w0_w1_overlay,
+        ),
+        w1_to_w2: comparative_workbench_read_model(
+            format!("{comparison_ref}:w1-w2"),
+            w1,
+            w2,
+            selectors,
+            w1_w2_overlay,
+        ),
+        candidate_only: true,
+        creates_semantic_authority: false,
+        creates_claim_truth: false,
+        predicts_outcome: false,
+    }
+}
+
+pub fn three_way_comparative_sequence(
+    comparison_ref: &str,
+    w0: &GraphIr,
+    w1: &GraphIr,
+    w2: &GraphIr,
+    selectors: ComparativeSelectors,
+    w0_w1_answer_changing: BTreeSet<String>,
+    w1_w2_answer_changing: BTreeSet<String>,
+) -> ThreeWayComparativeSequence {
+    ThreeWayComparativeSequence {
+        w0_to_w1: comparative_workbench_read_model(
+            format!("{comparison_ref}:w0-w1"),
+            w0,
+            w1,
+            selectors.clone(),
+            ComparativeExplanationOverlay {
+                answer_changing_semantic_refs: w0_w1_answer_changing,
+                ..ComparativeExplanationOverlay::empty()
+            },
+        ),
+        w1_to_w2: comparative_workbench_read_model(
+            format!("{comparison_ref}:w1-w2"),
+            w1,
+            w2,
+            selectors,
+            ComparativeExplanationOverlay {
+                answer_changing_semantic_refs: w1_w2_answer_changing,
+                ..ComparativeExplanationOverlay::empty()
+            },
+        ),
+        candidate_only: true,
+        creates_semantic_authority: false,
+        creates_claim_truth: false,
+        predicts_outcome: false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::ir::VisualNode;
+
+    fn node(id: u64, semantic_ref: &str, kind: &str) -> VisualNode {
+        VisualNode {
+            id: VisualObjectId(id),
+            semantic_ref: semantic_ref.into(),
+            kind: kind.into(),
+            label: semantic_ref.into(),
+            source_refs: vec![format!("source:{semantic_ref}")],
+            provenance_refs: vec![format!("receipt:{semantic_ref}")],
+            hidden: false,
+            x: 0.0,
+            y: 0.0,
+        }
+    }
+
+    fn graph(reference: &str, nodes: Vec<VisualNode>) -> GraphIr {
+        GraphIr {
+            graph_ref: reference.into(),
+            derived_only: true,
+            challengeable: true,
+            nodes,
+            edges: vec![],
+        }
+    }
+
+    #[test]
+    fn same_semantic_selection_uses_same_existing_domain_command_in_all_panels() {
+        let left = graph(
+            "graph:left",
+            vec![
+                node(71, "semantic:shared", "proposition"),
+                node(72, "semantic:left-only", "defeater"),
+            ],
+        );
+        let right = graph(
+            "graph:right",
+            vec![
+                node(701, "semantic:shared", "proposition"),
+                node(702, "semantic:right-only", "counter-defeater"),
+            ],
+        );
+        let model = comparative_workbench_read_model(
+            "comparison:test",
+            &left,
+            &right,
+            ComparativeSelectors {
+                left_ref: "left".into(),
+                right_ref: "right".into(),
+                query_ref: Some("query:test".into()),
+                consumer_ref: Some("consumer:test".into()),
+                as_at_ref: None,
+                scope_ref: None,
+            },
+            ComparativeExplanationOverlay::empty(),
+        );
+
+        let before_id = model
+            .topology
+            .before
+            .nodes
+            .iter()
+            .find(|node| node.semantic_ref == "semantic:shared")
+            .unwrap()
+            .id;
+        let after_id = model
+            .topology
+            .after
+            .nodes
+            .iter()
+            .find(|node| node.semantic_ref == "semantic:shared")
+            .unwrap()
+            .id;
+        assert_eq!(before_id, after_id);
+        assert_eq!(
+            model.select_command(ComparativePanel::Before, before_id),
+            model.select_command(ComparativePanel::After, after_id)
+        );
+    }
+
+    #[test]
+    fn explanation_overlay_is_presentation_only_and_reuses_semantic_ids() {
+        let left = graph(
+            "graph:left-overlay",
+            vec![node(1, "semantic:D", "defeater")],
+        );
+        let right = graph(
+            "graph:right-overlay",
+            vec![node(9, "semantic:D", "defeater")],
+        );
+        let model = comparative_workbench_read_model(
+            "comparison:overlay",
+            &left,
+            &right,
+            ComparativeSelectors {
+                left_ref: "left".into(),
+                right_ref: "right".into(),
+                query_ref: Some("query:pabai".into()),
+                consumer_ref: Some("consumer:pabai".into()),
+                as_at_ref: None,
+                scope_ref: None,
+            },
+            ComparativeExplanationOverlay {
+                typed_change_annotations: BTreeMap::new(),
+                change_layer_by_semantic_ref: BTreeMap::from([(
+                    "semantic:D".into(),
+                    "Applicability".into(),
+                )]),
+                explanation_by_semantic_ref: BTreeMap::from([(
+                    "semantic:D".into(),
+                    "reviewed defeater blocks route".into(),
+                )]),
+                answer_changing_semantic_refs: BTreeSet::from(["semantic:D".into()]),
+                unresolved_semantic_refs: BTreeSet::new(),
+                creates_semantic_authority: false,
+                creates_claim_truth: false,
+            },
+        );
+        assert_eq!(
+            model.explanation_overlay.change_layer_by_semantic_ref["semantic:D"],
+            "Applicability"
+        );
+        assert!(!model.explanation_overlay.creates_semantic_authority);
+        assert!(!model.explanation_overlay.creates_claim_truth);
+    }
+
+
+    #[test]
+    fn typed_answer_changing_annotation_emphasizes_delta_without_reclassifying_semantics() {
+        let left = graph(
+            "graph:left-typed-emphasis",
+            vec![node(1, "semantic:D", "defeater")],
+        );
+        let mut right_d = node(9, "semantic:D", "defeater");
+        right_d.provenance_refs = vec!["receipt:new-D".into()];
+        let right = graph("graph:right-typed-emphasis", vec![right_d]);
+
+        let model = comparative_workbench_read_model(
+            "comparison:typed-emphasis",
+            &left,
+            &right,
+            ComparativeSelectors {
+                left_ref: "w0".into(),
+                right_ref: "w1".into(),
+                query_ref: None,
+                consumer_ref: None,
+                as_at_ref: None,
+                scope_ref: None,
+            },
+            ComparativeExplanationOverlay {
+                typed_change_annotations: BTreeMap::from([(
+                    "semantic:D".into(),
+                    ComparativePresentationAnnotation {
+                        semantic_ref: "semantic:D".into(),
+                        layer: ComparativePresentationChangeLayer::Applicability,
+                        justification_refs: vec!["receipt:reviewed-D".into()],
+                        explanation_ref: Some("reviewed defeater blocks route".into()),
+                        answer_changing: true,
+                    },
+                )]),
+                change_layer_by_semantic_ref: BTreeMap::new(),
+                explanation_by_semantic_ref: BTreeMap::new(),
+                answer_changing_semantic_refs: BTreeSet::from(["semantic:D".into()]),
+                unresolved_semantic_refs: BTreeSet::new(),
+                creates_semantic_authority: false,
+                creates_claim_truth: false,
+            },
+        );
+
+        let delta = model
+            .topology
+            .delta
+            .nodes
+            .iter()
+            .find(|node| node.semantic_ref == "semantic:D")
+            .unwrap();
+        assert!(delta.kind.starts_with("answer-changing:Applicability:"));
+        assert!(model
+            .topology
+            .comparative
+            .changed_semantic_refs
+            .contains("semantic:D"));
+        assert_eq!(delta.semantic_ref, "semantic:D");
+        assert!(!model.creates_semantic_authority);
+        assert!(!model.creates_claim_truth);
+    }
+
+    #[test]
+    fn three_way_pabai_shape_preserves_D_then_C_without_prediction() {
+        let w0 = graph(
+            "graph:pabai:w0",
+            vec![node(1, "semantic:support", "support")],
+        );
+        let w1 = graph(
+            "graph:pabai:w1",
+            vec![
+                node(10, "semantic:support", "support"),
+                node(11, "semantic:D", "defeater"),
+            ],
+        );
+        let w2 = graph(
+            "graph:pabai:w2",
+            vec![
+                node(20, "semantic:support", "support"),
+                node(21, "semantic:D", "defeater"),
+                node(22, "semantic:C", "counter-defeater"),
+            ],
+        );
+        let sequence = three_way_comparative_sequence(
+            "comparison:pabai",
+            &w0,
+            &w1,
+            &w2,
+            ComparativeSelectors {
+                left_ref: "w0".into(),
+                right_ref: "w2".into(),
+                query_ref: Some("query:pabai:duty-route".into()),
+                consumer_ref: Some("consumer:pabai-climate-duty".into()),
+                as_at_ref: None,
+                scope_ref: None,
+            },
+            BTreeSet::from(["semantic:D".into()]),
+            BTreeSet::from(["semantic:C".into()]),
+        );
+
+        assert!(sequence
+            .w0_to_w1
+            .explanation_overlay.answer_changing_semantic_refs
+            .contains("semantic:D"));
+        assert!(sequence
+            .w1_to_w2
+            .explanation_overlay.answer_changing_semantic_refs
+            .contains("semantic:C"));
+        assert!(!sequence.predicts_outcome);
+        assert!(!sequence.creates_claim_truth);
+    }
+}

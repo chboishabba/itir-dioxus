@@ -1,0 +1,261 @@
+# M10 — Unified Workbench
+
+Status: active production UI tranche.
+
+## Canonical host
+
+Production workbench implementation lives in `chboishabba/itir-dioxus`.
+
+The previous `ITIR-suite/itir-svelte` M10 strip is retained only as a
+read-model/fixture regression reference. New UI implementation must not extend
+that Svelte surface.
+
+## Semantic progression
+
+```text
+Journal -> Timeline -> Handoff -> Matter / Proof -> Research
+```
+
+Each stage is one of:
+
+```text
+Available
+Blocked(reason)
+Unavailable(reason)
+```
+
+Unavailable is not false and hidden is not discarded.
+
+## Architecture
+
+```text
+canonical ITIR/SensibLaw world
+        |
+        v
+UnifiedWorkbenchReadModel
+        |
+        +--> Dioxus shell
+        |
+        +--> VisualisationIr --> wgpu renderer
+                                |
+Dioxus input -------------------+--> DomainCommand --> reducer
+GPU pick -----------------------+
+```
+
+Dioxus owns ordinary shell UI. wgpu owns charts/graph/proof-topology rendering.
+Neither is semantic authority.
+
+## Current Wave-5 calibration
+
+Expected:
+
+- Journal: available with exact fact/source/statement lineage.
+- Timeline: unavailable if no assembled event coordinate exists.
+- Handoff: blocked while reviewed material lacks a real share-scope receipt.
+- Matter/Proof: unavailable when no persisted legal-follow graph exists.
+- Research: available while review/follow pressure remains.
+
+## Next empirical weld
+
+Consume a real AU read model containing persisted `legal_follow_graph` nodes
+and edges. Matter/Proof becomes available only from those persisted refs.
+
+Do not backfill a graph into an older fixture merely to satisfy the UI.
+
+## GPU tranche
+
+The first GPU slice is intentionally bounded:
+
+- framework-neutral stable visual object IDs;
+- GraphIr and ChartIr;
+- Dioxus selection and GPU pick decode to the same DomainCommand;
+- pure selection reducer;
+- wgpu feature boundary;
+- no graph reconstruction from the Dioxus component tree.
+
+Next GPU implementation after compile validation:
+
+1. deterministic graph vertices/edges;
+2. integer pick-ID target;
+3. one proof/source graph specimen;
+4. later Sankey/hyperfabric layouts only after parity is green.
+
+## 2026-09-23 M10.1 implementation checkpoint
+
+The active workbench now consumes the existing DASHI interface/interaction IR
+rather than treating `DomainCommand` as a UI-local invention.
+
+Formal parent stack:
+
+```text
+PortableInteractiveViewExact
+  declarative UiNode Command interface
+
+JesusCrustUIInteractionIRExact
+  intent-level select / focus / follow / open-source / zoom vocabulary
+
+PortableInteractiveGpuProjectionExact
+  shell/GPU proposal -> same DomainCommand -> same reducer
+
+DioxusWgpuHyperfabricBridgeExact
+  concrete Dioxus/wgpu parity witness
+```
+
+The Rust workbench mirrors that split:
+
+```text
+src/visual/
+  interaction_ir.rs
+  command.rs
+  selection.rs
+  ir.rs
+  gpu.rs
+```
+
+Physical pointer gestures, DOM selectors and GPU hit mechanics are not canonical
+interaction identity.
+
+### Persisted AU ingestion
+
+`workbench::au_fact_review` now accepts either real persisted graph shape:
+
+```text
+semantic_context.legal_follow_graph
+```
+
+or the read-model promotion:
+
+```text
+legal_follow_graph
+```
+
+and retains persisted source, event, handoff, review/follow and graph refs.
+
+JSON is used only at the persisted data boundary. It is not the
+semantic/interaction command ABI.
+
+The repository includes:
+
+```text
+examples/au_legal_workbench.rs
+```
+
+for direct ingestion of a persisted AU workbench file.
+
+No committed populated AU legal-follow bundle was found in the current source
+repositories, so no fake "real" fixture has been introduced. The SensibLaw AU
+pipeline remains the producer of the empirical run.
+
+### Proof/source GraphIr
+
+Persisted legal-follow nodes/edges now project to a bounded GraphIr with:
+
+```text
+stable visual ID
+semantic ref
+typed kind
+source refs
+provenance refs
+hidden flag
+deterministic v0 position
+```
+
+and first-class stable edge IDs.
+
+The visual ID is a deterministic renderer projection only. It is not a
+canonical semantic digest and creates no authority.
+
+### wgpu slice
+
+With the `gpu` feature, GraphIr now lowers to:
+
+```text
+GraphGpuPlan
+  node vertices
+  edge vertices
+  integer pick IDs
+  pick ID -> VisualObjectId map
+      ↓
+wgpu vertex buffers
+      ↓
+bounded node + edge render pipelines
+```
+
+The first renderer intentionally uses static 2D node marks and line edges.
+
+No force layout, Sankey routing, LOD, graph inference or semantic reconstruction
+is present.
+
+A projected graph object now has the explicit parity path:
+
+```text
+Dioxus/shell Select(id)
+        ↓
+DomainCommand::SelectObject(id)
+        ↓
+shared reducer
+
+GPU pick integer
+        ↓
+GpuPickInput::Hit(id)
+        ↓
+DomainCommand::SelectObject(id)
+        ↓
+same reducer
+```
+
+Selected visual objects can reopen their semantic, source and provenance refs.
+
+### Remaining empirical gate
+
+The adapter and GPU path are source-written, but M10 is not closed until a
+fresh persisted AU workbench generated by SensibLaw is supplied to
+`au_legal_workbench` and the focused Rust/Dioxus/wgpu and Agda owners receive
+fresh compiler/kernel receipts.
+
+## M10 empirical closure receipt
+
+The remaining empirical weld has a two-command protocol.
+
+First persist the exact workbench from the real SensibLaw database:
+
+```bash
+python scripts/query_fact_review.py \
+  --db-path /path/to/itir.sqlite \
+  workbench \
+  --workflow-kind au_semantic \
+  -o /tmp/au-workbench.json
+```
+
+`query_fact_review.py` writes exactly the returned `workbench` object under a
+top-level `workbench` key. It does not rebuild or reinterpret the legal graph.
+
+Then, from `itir-dioxus`, run the real GPU receipt:
+
+```bash
+cargo run --no-default-features --features gpu \
+  --example au_legal_gpu_receipt -- \
+  /tmp/au-workbench.json
+```
+
+The receipt fails closed unless:
+
+- the persisted workbench contains a non-empty legal-follow graph;
+- a real wgpu adapter/device can be acquired;
+- graph buffers can be uploaded;
+- the color graph pass can be submitted;
+- the `R32Uint` pick pass can be submitted;
+- a selected pick texel can be copied back from GPU memory;
+- the integer pick ID maps to the expected `VisualObjectId`;
+- GPU and shell selection reach the identical reducer state;
+- the selected object reopens its semantic/source/provenance references.
+
+The GPU receipt still creates no semantic authority, claim truth, or residual
+payment. Rendering and picking remain proposal/projection mechanisms.
+
+
+> **Transport note:** the JSON file used by the M10 empirical closure protocol is
+> a reproducible export/diagnostic receipt only. It is not the production
+> SensibLaw → Dioxus semantic ABI. M11 production workbench comparison uses the
+> typed Rust reader/comparative projections directly from PostgreSQL; JSON is
+> retained only for replay/export/offline bundles.

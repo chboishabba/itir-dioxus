@@ -1,155 +1,76 @@
 [package]
-name = "solfunmeme-dioxus"
-version = "1.1.0"
-authors = ["github-actions[bot] <github-actions[bot]@users.noreply.github.com>"]
-edition = "2021"
-license = "MIT OR Apache-2.0"
+name = "itir-dioxus"
+version = "0.1.0"
+edition = "2024"
 publish = false
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-
-### git deps, could be submodules
-wallet-adapter = { git = "https://github.com/meta-introspector/SolanaWalletAdapter-zos", branch ="no-template"} # 
-syn-serde = { git = "https://github.com/meta-introspector/syn-serde-rust", branch="main", features = ["json"] }
-dioxus-charts = { git = "https://github.com/dioxus-community/dioxus-charts.git" ,  branch = "main" }
-erdfa-publish = { git = "https://github.com/meta-introspector/erdfa-publish.git", branch = "main", default-features = false, features = ["wasm"] }
-
-## normal deps 
-inventory = "0.3"
-zip = { version = "0.6" , default-features=false } # For ZIP creation
-
-aes-gcm = "0.10.3"
-base64 = "0.22.1"
-bincode = "1.3.3"
-bip39 = "2.1.0"
-bs58 = "0.5.1"
-chacha20poly1305 = "0.10.1"
-chrono = "0.4.41"
-console_log = "1.0.0"
-
-gloo = "0.11.0"
-gloo-net = "0.5.0"
-gloo-storage = "0.3.0"
-gloo-timers = { version = "0.3.0", features = ["futures"] }
-gloo-utils = "0.2.0"
-js-sys = "0.3.69"
-
-jzon = "0.12.5"
-log = "0.4.21"
-markdown-meta-parser = "0.1.3"
-nalgebra = "0.33.2"
-nom = "8.0.0"
-percent-encoding = "2.3.1"
-pulldown-cmark = "0.13.0"
-qrcodegen = "1.8.0"
-regex = "1.10.4"
-reqwasm = "0.5.0"
-reqwest = { version = "0.12.2", features = ["blocking", "json"] }
-ring = { version = "0.17.14", features = ["wasm32_unknown_unknown_js"] }
-ring-compat = "0.8.0"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-sha2 = "0.10.9"
-#solana-client = "*"
-#solana-sdk = "1.18.11"
-#solana-sdk = { version = "*" }
-#solana-system-interface = "*"
-#solana-transaction-error = { version = "*", features=["serde"] }
-
-solana-system-interface = "1.0.0"
-solana-sdk = { version = "2.3.0" }
-solana-transaction-error = { version = "3.0.0-canary.7040146", features=["serde"] }
-
-easer = "0.3.0"
-syn = "2.0.103"
-thiserror = { version = "2.0.12" }
-url = "2.5.4"
-
-wasm-bindgen = { version = "=0.2.108", features = ["serde-serialize"] }
-wasm-bindgen-futures = "0.4.42"
-wasm-logger = "0.2.0"
-#web-sys = { version = "0.3.58", features = ["Storage"] }
-
-web-sys = { version = "0.3.69", features = [    "Window", "Navigator",   "Storage", "Event", "InputEvent",  "EventTarget",  "HtmlInputElement",  "KeyboardEvent",  "Document",  "Element",	"HtmlAnchorElement"    , "Clipboard"  , "console"  ]  }
-
-
-#dioxus-motion = { git = "https://github.com/wheregmis/dioxus-motion" , branch = "main" }
-# dioxus-motion = "0.3.1" # TODO: update for dioxus 0.7
-dioxus = { version = "0.7.3", features = ["router"] }
-#dioxus = { git = "https://github.com/dioxusLabs/dioxus.git", branch="main" }
-# dioxus-router = "0.6.3" # included in dioxus 0.7
-# dioxus-web = "0.6.3" # included in dioxus 0.7
-#ndarray = "0.16.1"
-ndarray = "0.15.6"
-tclifford = "0.1.0"
-#rust-bert = "0.23.0"
-linfa = "0.7.1"
-linfa-preprocessing = "0.7.1"
-linfa-reduction = "0.7.1"
-#dioxus-charts = { path = "../dioxus-charts" }
-fastrand = "2.0.1"
-rand = "0.8.5"
-rand_core = { version = "0.6.4", features = ["std"] }
-emojis = "0.7.0"
-csv = "1.3.1"
-markdown = "1.0.0"
-urlencoding = "2.1.3"
-# dioxus-clipboard = "0.2.0" # TODO: update for 0.7
-# dioxus-html = "0.6.3" # included in dioxus 0.7
-# dioxus-logger = "0.6.2" # TODO: update for 0.7
-scraper = "0.23.1"
-rrust_kontekst = {path = "rrust_kontekst"}
-rrust_kontekst_base = {path = "rrust_kontekst_base"}
-ctor = "0.4.2"
-tracing = "0.1.41"
-rust-embed = "8.7.2"
-curve25519-dalek = "4.1.3"
-#rand_core = { version = "*", features = ["std"] }
-
-[dependencies.x25519-dalek  ]
-version = "2.0.1"
-features = [ "static_secrets"]
-
-[dependencies.uuid]
-version = "1.17.0"
-# Lets you generate random UUIDs
-features = [
-    "v4",
-    "js",
-    "rng-getrandom",
-    "rng-rand"
-]
+description = "Dioxus + wgpu operator workbench for the ITIR/SensibLaw suite"
 
 [features]
-default = ["web"]
+default = ["desktop"]
+desktop = ["dioxus/desktop", "production-data"]
 web = ["dioxus/web"]
-bincodev2 = []
-bincodev1 = []
+gpu = ["dep:wgpu", "dep:pollster"]
+production-data = ["dep:sensiblaw-reader-model", "dep:sensiblaw-pg-source-store", "dep:sensiblaw-legal-runtime", "dep:postgres"]
+
+[dependencies]
+dioxus = { version = "0.7.10", features = ["router"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+wgpu = { version = "29.0.3", optional = true }
+pollster = { version = "0.4", optional = true }
+postgres = { version = "0.19", optional = true }
+sensiblaw-reader-model = { git = "https://github.com/chboishabba/slr", rev = "7ec10d20c8d1d1ec57cc70ea77429af8132d4c63", package = "sensiblaw-reader-model", optional = true }
+sensiblaw-pg-source-store = { git = "https://github.com/chboishabba/slr", rev = "7ec10d20c8d1d1ec57cc70ea77429af8132d4c63", package = "sensiblaw-pg-source-store", optional = true }
+sensiblaw-legal-runtime = { git = "https://github.com/chboishabba/slr", rev = "7ec10d20c8d1d1ec57cc70ea77429af8132d4c63", package = "sensiblaw-legal-runtime", optional = true }
+
+[dev-dependencies]
+pretty_assertions = "1.4"
+
+[[example]]
+name = "au_legal_gpu_receipt"
+path = "examples/au_legal_gpu_receipt.rs"
+required-features = ["gpu"]
+
+[[example]]
+name = "m11_comparative_gpu_receipt"
+path = "examples/m11_comparative_gpu_receipt.rs"
+required-features = ["gpu"]
+
+[[example]]
+name = "m11_postgres_comparative_workbench"
+path = "examples/m11_postgres_comparative_workbench.rs"
+required-features = ["production-data"]
+
+[[example]]
+name = "m11_postgres_comparative_gpu_receipt"
+path = "examples/m11_postgres_comparative_gpu_receipt.rs"
+required-features = ["production-data", "gpu"]
+
+[[example]]
+name = "m11_postgres_pabai_gpu_receipt"
+path = "examples/m11_postgres_pabai_gpu_receipt.rs"
+required-features = ["production-data", "gpu"]
 
 
+[[example]]
+name = "m12_semantic_trace_receipt"
+path = "examples/m12_semantic_trace_receipt.rs"
+required-features = ["production-data"]
 
-# Server-side dependencies (excluded from WASM)
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-#rust-bert = "0.23" # Only include rust-bert for non-WASM targets
-#bzip2 = "*" 
-axum = "0.7" # Example server framework
-tokio = { version = "1.0", features = ["full"] } # For async runtime
 
-[profile]
+[[example]]
+name = "s28_timeline_receipt"
+path = "examples/s28_timeline_receipt.rs"
+required-features = ["production-data"]
 
-[profile.wasm-dev]
-inherits = "dev"
-opt-level = 1
 
-[profile.server-dev]
-inherits = "dev"
+[[example]]
+name = "s29_review_queue_receipt"
+path = "examples/s29_review_queue_receipt.rs"
+required-features = ["production-data"]
 
-[profile.android-dev]
-inherits = "dev"
 
-getrandom = { version = "0.4", features = ["wasm_js"] }
-
-# WASM getrandom support (all versions used by transitive deps)
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.4", features = ["wasm_js"] }
+[[example]]
+name = "gwb_matter_receipt"
+path = "examples/gwb_matter_receipt.rs"
+required-features = ["production-data"]
