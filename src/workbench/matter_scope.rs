@@ -7,7 +7,10 @@ use sensiblaw_core::matter_context::{
     ContextProjectionCoordinate, DisclosureBoundary, KnowledgeCutMembership,
     MatterConsumerRole, MatterContext, MatterPurpose,
 };
-use sensiblaw_reader_model::KnowledgeTimelineEntry;
+use sensiblaw_reader_model::{
+    KnowledgeTimelineEntry, MatterAcceptanceRoleCoordinate,
+    MatterAcceptanceSemanticRole,
+};
 
 use super::matter::GenericMatterRequest;
 
@@ -34,6 +37,12 @@ pub struct MatterScopeManifest {
     pub work_product_refs: Vec<String>,
     #[serde(default)]
     pub handoff_refs: Vec<String>,
+    #[serde(default)]
+    pub no_event_refs: Vec<String>,
+    #[serde(default)]
+    pub acceptance_roles: Vec<MatterScopeAcceptanceRole>,
+    #[serde(default)]
+    pub procedural_significance_review_refs: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -71,6 +80,13 @@ pub struct MatterScopeKnowledge {
     pub knowledge_membership: String,
     #[serde(default)]
     pub source_role_ref: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MatterScopeAcceptanceRole {
+    pub semantic_ref: String,
+    pub role: String,
+    pub review_ref: String,
 }
 
 fn default_true() -> bool {
@@ -163,6 +179,28 @@ impl MatterScopeManifest {
             })
             .collect::<Result<Vec<_>, String>>()?;
 
+        let acceptance_roles = self
+            .acceptance_roles
+            .into_iter()
+            .map(|coordinate| {
+                if coordinate.semantic_ref.trim().is_empty()
+                    || coordinate.review_ref.trim().is_empty()
+                {
+                    return Err(
+                        "acceptance role requires semantic_ref and review_ref".into()
+                    );
+                }
+                Ok(MatterAcceptanceRoleCoordinate {
+                    semantic_ref: coordinate.semantic_ref,
+                    role: parse_acceptance_role(&coordinate.role)?,
+                    review_ref: coordinate.review_ref,
+                    candidate_only: true,
+                    creates_semantic_authority: false,
+                    claim_truth_promoted: false,
+                })
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+
         Ok(GenericMatterRequest {
             matter_ref: self.matter_ref,
             event_refs: self.event_refs,
@@ -174,6 +212,10 @@ impl MatterScopeManifest {
             research_refs: self.research_refs,
             work_product_refs: self.work_product_refs,
             handoff_refs: self.handoff_refs,
+            no_event_refs: self.no_event_refs,
+            acceptance_roles,
+            procedural_significance_review_refs:
+                self.procedural_significance_review_refs,
         })
     }
 }
@@ -224,6 +266,17 @@ fn parse_disclosure_boundary(value: &str) -> Result<DisclosureBoundary, String> 
     }
 }
 
+fn parse_acceptance_role(
+    value: &str,
+) -> Result<MatterAcceptanceSemanticRole, String> {
+    match value {
+        "party-assertion" => Ok(MatterAcceptanceSemanticRole::PartyAssertion),
+        "procedural-outcome" => Ok(MatterAcceptanceSemanticRole::ProceduralOutcome),
+        "later-annotation" => Ok(MatterAcceptanceSemanticRole::LaterAnnotation),
+        other => Err(format!("unknown Matter acceptance role: {other}")),
+    }
+}
+
 fn parse_knowledge_membership(
     value: &str,
 ) -> Result<KnowledgeCutMembership, String> {
@@ -267,6 +320,9 @@ mod tests {
             research_refs: vec![],
             work_product_refs: vec![],
             handoff_refs: vec![],
+            no_event_refs: vec![],
+            acceptance_roles: vec![],
+            procedural_significance_review_refs: vec![],
         };
         let request = manifest.into_request().unwrap();
         assert_eq!(
