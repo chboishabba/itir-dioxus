@@ -24,6 +24,7 @@ enum MatterPanel {
     Research,
     WorkProduct,
     Handoff,
+    Acceptance,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -111,6 +112,17 @@ pub fn GenericMatterWorkspaceView(model: GenericMatterWorkspace) -> Element {
                 MatterPanelButton { label: "Research", count: projection.research_refs.len(), target: MatterPanel::Research, panel }
                 MatterPanelButton { label: "Work Product", count: projection.work_product_refs.len(), target: MatterPanel::WorkProduct, panel }
                 MatterPanelButton { label: "Handoff", count: projection.handoff_refs.len(), target: MatterPanel::Handoff, panel }
+                MatterPanelButton {
+                    label: "Acceptance",
+                    count: model.acceptance.missing_date_event_refs.len()
+                        + model.acceptance.missing_actor_claim_refs.len()
+                        + model.acceptance.contradictory_relation_refs.len()
+                        + model.acceptance.no_event_refs.len()
+                        + model.acceptance.procedural_significance_review_refs.len()
+                        + model.acceptance.operational_carryover_refs.len(),
+                    target: MatterPanel::Acceptance,
+                    panel
+                }
             }
 
             if let Some(reference) = selected_ref.read().as_ref() {
@@ -181,6 +193,12 @@ pub fn GenericMatterWorkspaceView(model: GenericMatterWorkspace) -> Element {
                 },
                 MatterPanel::Handoff => rsx! {
                     MatterHandoffPanel {
+                        model: model.clone(),
+                        selected_ref
+                    }
+                },
+                MatterPanel::Acceptance => rsx! {
+                    MatterAcceptancePanel {
                         model: model.clone(),
                         selected_ref
                     }
@@ -690,6 +708,130 @@ fn MatterHandoffPanel(
                     p {
                         style: "font-size: 0.8rem; opacity: 0.7;",
                         "canonical_world_mutated={value.canonical_world_mutated} · redaction_deletes_source={value.redaction_deletes_canonical_source} · export_creates_authority={value.export_creates_semantic_authority}"
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+#[component]
+fn MatterAcceptancePanel(
+    model: GenericMatterWorkspace,
+    selected_ref: Signal<Option<String>>,
+) -> Element {
+    let receipt = &model.acceptance;
+
+    rsx! {
+        section {
+            style: "margin-top: 1rem;",
+            h2 { "M13 Acceptance" }
+            p {
+                "Executable Mary/SensibLaw operator diagnostics over the current persisted Matter. These are review/product obligations, not new truth statuses."
+            }
+
+            div {
+                style: "display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem;",
+                AcceptanceCount { label: "Source reopen paths", count: receipt.source_reopenable_ref_count }
+                AcceptanceCount { label: "Event entries", count: receipt.event_entry_count }
+                AcceptanceCount { label: "Knowledge entries", count: receipt.knowledge_entry_count }
+                AcceptanceCount { label: "Work events", count: receipt.work_event_count }
+                AcceptanceCount { label: "Suggested joins", count: receipt.suggested_join_count }
+                AcceptanceCount { label: "Review items", count: receipt.review_item_count }
+            }
+
+            AcceptanceRefSection {
+                title: "Missing date / undated / unknown chronology",
+                refs: receipt.missing_date_event_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Missing actor",
+                refs: receipt.missing_actor_claim_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Contradictory chronology / accounts",
+                refs: receipt.contradictory_relation_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "No-event material (explicitly reviewed; absence was not inferred)",
+                refs: receipt.no_event_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Party assertions",
+                refs: receipt.party_assertion_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Procedural outcomes",
+                refs: receipt.procedural_outcome_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Later annotations",
+                refs: receipt.later_annotation_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Procedural significance still open",
+                refs: receipt.procedural_significance_review_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Operational carryover / interrupted / unresolved",
+                refs: receipt.operational_carryover_refs.clone(),
+                selected_ref
+            }
+
+            article {
+                style: "border: 1px solid #bbb; border-radius: 0.6rem; padding: 0.8rem; margin-top: 0.9rem;",
+                strong { "Non-collapse receipt" }
+                ul {
+                    li { "missing date ≠ event did not happen: {receipt.missing_date_means_event_did_not_happen}" }
+                    li { "missing actor ≠ unknown person finding: {receipt.missing_actor_means_unknown_person}" }
+                    li { "no-event material ≠ false: {receipt.no_event_means_false}" }
+                    li { "creates semantic authority: {receipt.creates_semantic_authority}" }
+                    li { "claim truth promoted: {receipt.claim_truth_promoted}" }
+                    li { "canonical world mutated: {receipt.canonical_world_mutated}" }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn AcceptanceCount(label: &'static str, count: usize) -> Element {
+    rsx! {
+        div {
+            style: "border: 1px solid #ccc; border-radius: 0.45rem; padding: 0.55rem;",
+            strong { "{count}" }
+            div { style: "font-size: 0.8rem; opacity: 0.75;", "{label}" }
+        }
+    }
+}
+
+#[component]
+fn AcceptanceRefSection(
+    title: &'static str,
+    refs: Vec<String>,
+    selected_ref: Signal<Option<String>>,
+) -> Element {
+    rsx! {
+        details {
+            style: "border: 1px solid #ddd; border-radius: 0.5rem; padding: 0.6rem; margin-top: 0.55rem;",
+            summary { "{title} · {refs.len()}" }
+            if refs.is_empty() {
+                p { style: "font-size: 0.85rem; opacity: 0.7;", "No coordinates in this category." }
+            } else {
+                ul {
+                    for reference in refs.iter() {
+                        li {
+                            SemanticRefButton { reference: reference.clone(), selected_ref }
+                        }
                     }
                 }
             }
