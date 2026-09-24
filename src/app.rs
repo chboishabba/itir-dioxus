@@ -299,7 +299,7 @@ fn SemanticTraceCard(trace: SemanticTracePath) -> Element {
             dl {
                 style: "display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.3rem 0.8rem;",
                 dt { "Event" }
-                dd { "{trace.event_ref.as_deref().unwrap_or("—")}" }
+                dd { "{event_label}" }
                 dt { "Observation" }
                 dd { "{trace.observation_ref}" }
                 if let Some(parse) = trace.parse.as_ref() {
