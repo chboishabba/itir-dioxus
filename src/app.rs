@@ -692,7 +692,7 @@ fn LiveReviewItemCard(item: ReviewItem) -> Element {
                     "Reviewer ref"
                     input {
                         style: "display: block; width: min(100%, 32rem); margin-top: 0.2rem;",
-                        value: "{reviewer_ref}",
+                        value: reviewer_ref(),
                         oninput: move |event| reviewer_ref.set(event.value())
                     }
                 }
@@ -726,6 +726,8 @@ fn LiveReviewItemCard(item: ReviewItem) -> Element {
                     for action in snapshot.available_actions.iter().copied() {
                         {
                             let action_label = format!("{:?}", action);
+                            let result_action_label = action_label.clone();
+                            let review_item_ref = snapshot.review_item_ref.clone();
                             rsx! {
                                 button {
                                     style: "border: 1px solid #888; border-radius: 999px; padding: 0.35rem 0.7rem; cursor: pointer;",
@@ -759,7 +761,7 @@ fn LiveReviewItemCard(item: ReviewItem) -> Element {
                                         };
 
                                         match crate::workbench::review::execute_review_action(
-                                            &snapshot.review_item_ref,
+                                            &review_item_ref,
                                             action,
                                             &reviewer,
                                             qualification,
@@ -770,7 +772,7 @@ fn LiveReviewItemCard(item: ReviewItem) -> Element {
                                                 let new_status = format!("{:?}", persisted.current_status);
                                                 live_item.set(persisted);
                                                 action_result.set(Some(format!(
-                                                    "Persisted {action_label}: effect={effect}; status={new_status}"
+                                                    "Persisted {result_action_label}: effect={effect}; status={new_status}"
                                                 )));
                                             }
                                             Err(error) => {
