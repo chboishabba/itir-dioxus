@@ -13,6 +13,8 @@ pub mod matter;
 #[cfg(feature = "production-data")]
 pub mod matter_scope;
 #[cfg(feature = "production-data")]
+pub mod work_product_coverage;
+#[cfg(feature = "production-data")]
 pub mod chat_source;
 #[cfg(feature = "production-data")]
 pub mod operational_timeline;
