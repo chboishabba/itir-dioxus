@@ -1,5 +1,7 @@
 #[cfg(feature = "production-data")]
 pub mod production_comparative;
+#[cfg(feature = "production-data")]
+pub mod semantic_trace;
 pub mod persisted_comparative;
 pub mod comparative;
 pub mod au_fact_review;
