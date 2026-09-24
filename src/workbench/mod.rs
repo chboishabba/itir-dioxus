@@ -12,6 +12,8 @@ pub mod gwb_matter;
 pub mod event_discovery;
 #[cfg(feature = "production-data")]
 pub mod operational_timeline;
+#[cfg(feature = "production-data")]
+pub mod chat_source;
 pub mod persisted_comparative;
 pub mod comparative;
 pub mod au_fact_review;
