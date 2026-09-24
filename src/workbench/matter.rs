@@ -5,9 +5,13 @@ use std::collections::BTreeSet;
 use sensiblaw_core::matter_context::{
     ContextProjectionCoordinate, MatterContext,
 };
+use sensiblaw_pg_source_store::{
+    load_database_config, load_operational_outstanding_for_date,
+};
 use sensiblaw_reader_model::{
-    project_matter_workspace, KnowledgeTimelineEntry, MatterWorkspaceInput,
-    MatterWorkspaceProjection, OperationalTimelineProjection,
+    project_matter_workspace, project_operational_outstanding,
+    KnowledgeTimelineEntry, MatterWorkspaceInput, MatterWorkspaceProjection,
+    OperationalTimelineProjection,
 };
 
 use super::{
@@ -68,6 +72,7 @@ pub fn load_generic_matter_workspace(
 
     let join_proposals = load_production_event_discovery_workspace()?.projection;
     let review_queue = load_production_review_workspace()?.queue;
+    let config = load_database_config(None).map_err(|error| error.to_string())?;
 
     let mut operational_dates = request
         .operational_dates
@@ -110,6 +115,17 @@ pub fn load_generic_matter_workspace(
         claim_truth_promoted: false,
     };
 
+    let mut operational_outstanding_states = Vec::new();
+    for state_date in &operational_dates {
+        operational_outstanding_states.extend(
+            load_operational_outstanding_for_date(&config, state_date)
+                .map_err(|error| error.to_string())?,
+        );
+    }
+    let operational_outstanding =
+        project_operational_outstanding(&operational_outstanding_states)
+            .map_err(|error| format!("{error:?}"))?;
+
     let input = MatterWorkspaceInput {
         matter_ref: request.matter_ref.clone(),
         context: request.context,
@@ -118,6 +134,7 @@ pub fn load_generic_matter_workspace(
         event_timeline: timeline.chronology,
         knowledge_timeline: request.knowledge_timeline,
         operational_timeline,
+        operational_outstanding,
         join_proposals,
         review_queue,
         legal_proof_refs: request.legal_proof_refs,
