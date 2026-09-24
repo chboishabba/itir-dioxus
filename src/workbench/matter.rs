@@ -9,9 +9,11 @@ use sensiblaw_pg_source_store::{
     load_database_config, load_operational_outstanding_for_date,
 };
 use sensiblaw_reader_model::{
-    project_matter_workspace, project_operational_outstanding,
-    KnowledgeTimelineEntry, MatterWorkspaceInput, MatterWorkspaceProjection,
-    OperationalTimelineProjection,
+    project_matter_acceptance, project_matter_workspace,
+    project_operational_outstanding, KnowledgeTimelineEntry,
+    MatterAcceptanceInput, MatterAcceptanceReceipt,
+    MatterAcceptanceRoleCoordinate, MatterWorkspaceInput,
+    MatterWorkspaceProjection, OperationalTimelineProjection,
 };
 
 use super::{
@@ -33,11 +35,15 @@ pub struct GenericMatterRequest {
     pub research_refs: Vec<String>,
     pub work_product_refs: Vec<String>,
     pub handoff_refs: Vec<String>,
+    pub no_event_refs: Vec<String>,
+    pub acceptance_roles: Vec<MatterAcceptanceRoleCoordinate>,
+    pub procedural_significance_review_refs: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenericMatterWorkspace {
     pub projection: MatterWorkspaceProjection,
+    pub acceptance: MatterAcceptanceReceipt,
     pub event_refs: Vec<String>,
     pub operational_dates: Vec<String>,
 }
@@ -153,8 +159,25 @@ pub fn load_generic_matter_workspace(
         return Err("generic Matter projection crossed semantic boundary".into());
     }
 
+    let acceptance = project_matter_acceptance(&MatterAcceptanceInput {
+        workspace: projection.clone(),
+        no_event_refs: request.no_event_refs,
+        role_coordinates: request.acceptance_roles,
+        procedural_significance_review_refs:
+            request.procedural_significance_review_refs,
+    })
+    .map_err(|error| format!("{error:?}"))?;
+
+    if acceptance.creates_semantic_authority
+        || acceptance.claim_truth_promoted
+        || acceptance.canonical_world_mutated
+    {
+        return Err("Matter acceptance receipt crossed semantic boundary".into());
+    }
+
     Ok(GenericMatterWorkspace {
         projection,
+        acceptance,
         event_refs,
         operational_dates,
     })
@@ -194,6 +217,9 @@ mod tests {
             research_refs: vec![],
             work_product_refs: vec![],
             handoff_refs: vec![],
+            no_event_refs: vec![],
+            acceptance_roles: vec![],
+            procedural_significance_review_refs: vec![],
         };
 
         assert_eq!(
