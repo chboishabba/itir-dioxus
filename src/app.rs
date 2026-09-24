@@ -1,7 +1,9 @@
 use dioxus::prelude::*;
 
 #[cfg(feature = "production-data")]
-use sensiblaw_reader_model::{SemanticTracePath, TraceReviewState};
+use sensiblaw_reader_model::{
+    ChronologyPlacementKind, PropositionContestationView, SemanticTracePath, TraceReviewState,
+};
 
 use crate::workbench::{
     comparative::ComparativeWorkbenchReadModel, wave5_personal_handoff_read_model,
@@ -342,6 +344,222 @@ fn SemanticTraceCard(trace: SemanticTracePath) -> Element {
                     strong { "Downstream uses: " }
                     for use_ref in trace.downstream_use_refs.iter() {
                         span { "{use_ref} " }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+#[cfg(feature = "production-data")]
+fn chronology_placement_label(kind: ChronologyPlacementKind) -> &'static str {
+    match kind {
+        ChronologyPlacementKind::Exact => "Dated",
+        ChronologyPlacementKind::Approximate => "Approximate",
+        ChronologyPlacementKind::RelativeOnly => "Relative",
+        ChronologyPlacementKind::Undated => "Undated",
+        ChronologyPlacementKind::Unknown => "Unknown",
+    }
+}
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn TimelineWorkspaceView(
+    model: crate::workbench::timeline::ProductionTimelineWorkspace,
+) -> Element {
+    rsx! {
+        section {
+            style: "margin-top: 2rem;",
+            header {
+                h2 { "Timeline" }
+                p {
+                    "Reviewed chronology projection · exact, approximate, relative, undated and unknown remain distinct."
+                }
+                p {
+                    style: "font-size: 0.9rem; opacity: 0.75;",
+                    "Contestation is shown from typed claim relations; no event date or narrative is inferred by this view."
+                }
+            }
+
+            if model.chronology.entries.is_empty() {
+                p { "No persisted chronology entries are available for this matter selection." }
+            } else {
+                for entry in model.chronology.entries.iter() {
+                    {
+                        let placement_label = chronology_placement_label(entry.placement);
+                        let contested_label = if entry.has_contestation() {
+                            " · contested"
+                        } else {
+                            ""
+                        };
+                        let traces = model
+                            .traces_by_event
+                            .get(&entry.event_ref)
+                            .cloned()
+                            .unwrap_or_default();
+                        rsx! {
+                            details {
+                                style: "border: 1px solid #aaa; border-radius: 0.6rem; margin-top: 0.75rem; padding: 0.8rem;",
+                                summary {
+                                    style: "cursor: pointer;",
+                                    strong { "{entry.display_coordinate}" }
+                                    span { " · {placement_label}{contested_label}" }
+                                    div {
+                                        style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                        "{entry.event_ref}"
+                                    }
+                                }
+
+                                div {
+                                    style: "display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; margin-top: 0.8rem;",
+                                    div { "{entry.observation_refs.len()} observations" }
+                                    div { "{entry.statement_refs.len()} statements" }
+                                    div { "{entry.claim_refs.len()} claims" }
+                                }
+
+                                if let Some(relative_ref) = entry.relative_event_ref.as_ref() {
+                                    p {
+                                        style: "font-size: 0.9rem;",
+                                        "Relative event: {relative_ref}"
+                                    }
+                                }
+
+                                if !entry.claim_refs.is_empty() {
+                                    div {
+                                        style: "margin-top: 0.75rem;",
+                                        strong { "Claim leaves" }
+                                        ul {
+                                            for claim_ref in entry.claim_refs.iter() {
+                                                li { "{claim_ref}" }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if !entry.contestation_relation_refs.is_empty() {
+                                    div {
+                                        style: "margin-top: 0.75rem;",
+                                        strong { "Contestation relations" }
+                                        ul {
+                                            for relation_ref in entry.contestation_relation_refs.iter() {
+                                                li { "{relation_ref}" }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if traces.is_empty() {
+                                    p {
+                                        style: "font-size: 0.9rem; opacity: 0.75;",
+                                        "No persisted source trace is available for this event."
+                                    }
+                                } else {
+                                    section {
+                                        style: "margin-top: 1rem;",
+                                        h4 { "Source trace" }
+                                        for trace in traces.iter() {
+                                            SemanticTraceCard { trace: trace.clone() }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            FactsClaimsWorkspaceView {
+                views: model.chronology.proposition_views.clone()
+            }
+        }
+    }
+}
+
+#[cfg(feature = "production-data")]
+#[component]
+fn FactsClaimsWorkspaceView(views: Vec<PropositionContestationView>) -> Element {
+    rsx! {
+        section {
+            style: "margin-top: 2rem;",
+            header {
+                h2 { "Facts / Claims" }
+                p {
+                    "One proposition root may retain multiple distinct accounts, denials and qualifications."
+                }
+            }
+
+            if views.is_empty() {
+                p { "No proposition roots are linked to the selected timeline events." }
+            } else {
+                for view in views.iter() {
+                    article {
+                        style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
+                        h3 { "{view.root.label}" }
+                        div {
+                            style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                            "{view.root.proposition_ref}"
+                        }
+
+                        h4 { "Accounts" }
+                        if view.leaves.is_empty() {
+                            p { "No claim leaves are attached." }
+                        } else {
+                            ul {
+                                for leaf in view.leaves.iter() {
+                                    {
+                                        let kind = format!("{:?}", leaf.kind);
+                                        let review = format!("{:?}", leaf.review_state);
+                                        let speaker = leaf.speaker_ref.as_deref().unwrap_or("speaker unknown");
+                                        rsx! {
+                                            li {
+                                                strong { "{kind}" }
+                                                span { " · {review} · {speaker}" }
+                                                div {
+                                                    style: "font-size: 0.8rem; opacity: 0.75; overflow-wrap: anywhere;",
+                                                    "{leaf.claim_ref}"
+                                                }
+                                                div {
+                                                    style: "font-size: 0.8rem;",
+                                                    "{leaf.statement_refs.len()} statements · {leaf.observation_refs.len()} observations"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        h4 { "Relations" }
+                        if view.relations.is_empty() {
+                            p { "No typed contestation relation is persisted." }
+                        } else {
+                            ul {
+                                for relation in view.relations.iter() {
+                                    {
+                                        let kind = format!("{:?}", relation.kind);
+                                        rsx! {
+                                            li {
+                                                strong { "{kind}" }
+                                                span {
+                                                    " · {relation.from_claim_ref} → {relation.to_claim_ref}"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if !view.orphan_relation_refs.is_empty() {
+                            div {
+                                style: "font-size: 0.85rem; opacity: 0.75;",
+                                strong { "Unresolved relation references: " }
+                                for relation_ref in view.orphan_relation_refs.iter() {
+                                    span { "{relation_ref} " }
+                                }
+                            }
+                        }
                     }
                 }
             }
