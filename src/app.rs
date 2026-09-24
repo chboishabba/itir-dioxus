@@ -790,3 +790,201 @@ fn GwbMatterNavCard(title: &'static str, count: usize) -> Element {
         }
     }
 }
+
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn EventDiscoveryWorkspaceView(
+    model: crate::workbench::event_discovery::ProductionEventDiscoveryWorkspace,
+) -> Element {
+    rsx! {
+        section {
+            style: "margin-top: 2rem;",
+            header {
+                h2 { "Suggested Event Joins" }
+                p {
+                    "Automatic candidate discovery over source-bound observations. Suggestions require EventAssembly review before any observation → event identity is materialised."
+                }
+                p {
+                    style: "font-size: 0.9rem; opacity: 0.75;",
+                    "Same QID alone is insufficient · candidate-only · no semantic authority or truth promotion"
+                }
+            }
+
+            if model.projection.proposals.is_empty() {
+                p { "No candidate event joins currently meet the configured discovery threshold." }
+            } else {
+                for view in model.projection.proposals.iter() {
+                    article {
+                        style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
+                        header {
+                            strong { "Candidate event join" }
+                            span { " · {view.signal_kind_count} signal kinds" }
+                            div {
+                                style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                "{view.proposal.proposal_ref}"
+                            }
+                        }
+
+                        div {
+                            style: "display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; margin-top: 0.75rem;",
+                            div { "{view.observation_count} observations" }
+                            div { "{view.source_family_count} source families" }
+                            div { "review required" }
+                        }
+
+                        details {
+                            style: "margin-top: 0.75rem;",
+                            summary { "Source observations" }
+                            ul {
+                                for observation_ref in view.proposal.observation_refs.iter() {
+                                    li { "{observation_ref}" }
+                                }
+                            }
+                        }
+
+                        details {
+                            style: "margin-top: 0.4rem;",
+                            summary { "Why this was suggested" }
+                            ul {
+                                for signal in view.proposal.signals.iter() {
+                                    {
+                                        let kind = format!("{:?}", signal.kind);
+                                        rsx! {
+                                            li {
+                                                strong { "{kind}" }
+                                                span { " · {signal.evidence_ref}" }
+                                                div {
+                                                    style: "font-size: 0.8rem; opacity: 0.7;",
+                                                    "detector: {signal.detector_ref}"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if !view.proposal.statement_refs.is_empty() {
+                            details {
+                                style: "margin-top: 0.4rem;",
+                                summary { "Statement ancestry" }
+                                ul {
+                                    for statement_ref in view.proposal.statement_refs.iter() {
+                                        li { "{statement_ref}" }
+                                    }
+                                }
+                            }
+                        }
+
+                        p {
+                            style: "font-size: 0.85rem; opacity: 0.75;",
+                            "This proposal is not an event. Accept/reject/qualify it through the ordinary Review workspace."
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn OperationalTimelineWorkspaceView(
+    model: crate::workbench::operational_timeline::ProductionOperationalTimelineWorkspace,
+) -> Element {
+    rsx! {
+        section {
+            style: "margin-top: 2rem;",
+            header {
+                h2 { "Work / Activity Timeline" }
+                p {
+                    "Producer-owned StatiBaker operational history: what the operator/system was doing, kept distinct from world/matter events."
+                }
+                p {
+                    style: "font-size: 0.9rem; opacity: 0.75;",
+                    "OperationalEvent ≠ SemanticEvent · opened source ≠ evidence payment · tool use ≠ endorsement"
+                }
+                div {
+                    style: "font-size: 0.85rem; opacity: 0.7;",
+                    "State date: {model.state_date}"
+                }
+            }
+
+            if model.timeline.entries.is_empty() {
+                p { "No imported operational events are available for this state date." }
+            } else {
+                for entry in model.timeline.entries.iter() {
+                    {
+                        let kind = format!("{:?}", entry.event.kind);
+                        let link_count = entry.links.len();
+                        rsx! {
+                            article {
+                                style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
+                                header {
+                                    strong { "{entry.event.label}" }
+                                    span { " · {kind}" }
+                                    div {
+                                        style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                        "{entry.event.operational_event_ref}"
+                                    }
+                                }
+
+                                dl {
+                                    style: "display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.25rem 0.75rem; margin-top: 0.75rem;",
+                                    dt { "Start" }
+                                    dd { "{entry.event.start_time_ref}" }
+                                    dt { "End" }
+                                    dd { "{entry.event.end_time_ref}" }
+                                    dt { "Producer event" }
+                                    dd { "{entry.event.producer_event_ref}" }
+                                    if let Some(app_ref) = entry.event.primary_app_ref.as_ref() {
+                                        dt { "App" }
+                                        dd { "{app_ref}" }
+                                    }
+                                    dt { "Semantic links" }
+                                    dd { "{link_count}" }
+                                }
+
+                                if !entry.links.is_empty() {
+                                    details {
+                                        style: "margin-top: 0.75rem;",
+                                        summary { "Reviewed semantic/workflow links" }
+                                        ul {
+                                            for link in entry.links.iter() {
+                                                {
+                                                    let relation = format!("{:?}", link.relation_kind);
+                                                    let target_kind = format!("{:?}", link.target_kind);
+                                                    rsx! {
+                                                        li {
+                                                            strong { "{relation}" }
+                                                            span { " · {target_kind}: {link.target_ref}" }
+                                                            div {
+                                                                style: "font-size: 0.8rem; opacity: 0.7;",
+                                                                "receipt: {link.relationship_receipt_ref}"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                details {
+                                    style: "margin-top: 0.4rem;",
+                                    summary { "Operational provenance" }
+                                    ul {
+                                        for provenance_ref in entry.event.provenance_refs.iter() {
+                                            li { "{provenance_ref}" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
