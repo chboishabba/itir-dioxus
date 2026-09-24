@@ -44,6 +44,7 @@ pub fn GenericMatterWorkspaceView(model: GenericMatterWorkspace) -> Element {
     let event_count = projection.event_timeline.entries.len();
     let knowledge_count = projection.knowledge_timeline.len();
     let operational_count = projection.operational_timeline.entries.len();
+    let outstanding_count = projection.operational_outstanding.states.len();
     let claim_count = projection
         .event_timeline
         .proposition_views
@@ -81,7 +82,8 @@ pub fn GenericMatterWorkspaceView(model: GenericMatterWorkspace) -> Element {
                     span { "{source_count} source traces" }
                     span { "{event_count} event entries" }
                     span { "{knowledge_count} knowledge entries" }
-                    span { "{operational_count} work entries" }
+                    span { "{operational_count} work events" }
+                    span { "{outstanding_count} carryover/unresolved states" }
                 }
                 if !projection.context_projection.exclusions.is_empty() {
                     details {
@@ -101,7 +103,7 @@ pub fn GenericMatterWorkspaceView(model: GenericMatterWorkspace) -> Element {
             nav {
                 style: "display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; margin-top: 1rem;",
                 MatterPanelButton { label: "Sources", count: source_count, target: MatterPanel::Sources, panel }
-                MatterPanelButton { label: "Timeline", count: event_count + knowledge_count + operational_count, target: MatterPanel::Timeline, panel }
+                MatterPanelButton { label: "Timeline", count: event_count + knowledge_count + operational_count + outstanding_count, target: MatterPanel::Timeline, panel }
                 MatterPanelButton { label: "Facts / Claims", count: claim_count, target: MatterPanel::FactsClaims, panel }
                 MatterPanelButton { label: "Suggested Joins", count: proposal_count, target: MatterPanel::SuggestedJoins, panel }
                 MatterPanelButton { label: "Review", count: review_count, target: MatterPanel::Review, panel }
@@ -332,6 +334,33 @@ fn MatterTimelinePanel(
                     }
                 },
                 TimelineMode::Work => rsx! {
+                    if !model.projection.operational_outstanding.states.is_empty() {
+                        section {
+                            style: "margin-top: 0.7rem;",
+                            h3 { "Carryover / interrupted / unresolved" }
+                            p {
+                                style: "font-size: 0.82rem; opacity: 0.72;",
+                                "Operational unresolved ≠ Review pending ≠ Semantic unresolved ≠ User priority."
+                            }
+                            for state in model.projection.operational_outstanding.states.iter() {
+                                article {
+                                    style: "border: 1px dashed #999; border-radius: 0.6rem; padding: 0.8rem; margin-top: 0.5rem;",
+                                    strong { "{state.label}" }
+                                    span { " · {state.kind:?}" }
+                                    div {
+                                        SemanticRefButton { reference: state.operational_state_ref.clone(), selected_ref }
+                                    }
+                                    div {
+                                        style: "font-size: 0.84rem;",
+                                        "subject: "
+                                        SemanticRefButton { reference: state.subject_ref.clone(), selected_ref }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    h3 { style: "margin-top: 1rem;", "Activity events" }
                     for entry in model.projection.operational_timeline.entries.iter() {
                         article {
                             style: "border: 1px solid #bbb; border-radius: 0.6rem; padding: 0.8rem; margin-top: 0.6rem;",
