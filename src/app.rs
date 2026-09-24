@@ -1,5 +1,8 @@
 use dioxus::prelude::*;
 
+#[cfg(feature = "production-data")]
+use sensiblaw_reader_model::{SemanticTracePath, TraceReviewState};
+
 use crate::workbench::{
     comparative::ComparativeWorkbenchReadModel, wave5_personal_handoff_read_model,
     StageAvailability, UnifiedWorkbenchReadModel, WorkbenchStageKind,
@@ -240,6 +243,107 @@ fn ComparativePanelSummary(
                 "{graph_ref}"
             }
             div { "{node_count} nodes · {edge_count} edges" }
+        }
+    }
+}
+
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn SemanticTraceInspectorView(traces: Vec<SemanticTracePath>) -> Element {
+    rsx! {
+        section {
+            style: "margin-top: 2rem;",
+            header {
+                h2 { "Source / Statement Trace" }
+                p {
+                    "Read-only provenance traversal · event → observation → parse → statement → exact source"
+                }
+                p {
+                    style: "font-size: 0.9rem; opacity: 0.75;",
+                    "This view creates no evidence payment, semantic authority, applicability, or claim truth."
+                }
+            }
+
+            if traces.is_empty() {
+                p { "No persisted semantic trace is available for the selected event." }
+            } else {
+                for trace in traces.iter() {
+                    SemanticTraceCard { trace: trace.clone() }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "production-data")]
+#[component]
+fn SemanticTraceCard(trace: SemanticTracePath) -> Element {
+    let review_label = trace
+        .parse
+        .as_ref()
+        .map(|parse| match parse.review_state {
+            TraceReviewState::Unreviewed => "unreviewed",
+            TraceReviewState::ParseReviewed => "parse reviewed",
+            TraceReviewState::SemanticallyAdmitted => "semantically admitted",
+            TraceReviewState::Rejected => "rejected",
+            TraceReviewState::Abstained => "abstained",
+            TraceReviewState::Qualified => "qualified",
+        })
+        .unwrap_or("no parse coordinate");
+
+    rsx! {
+        article {
+            style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
+            dl {
+                style: "display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.3rem 0.8rem;",
+                dt { "Event" }
+                dd { "{trace.event_ref.as_deref().unwrap_or("—")}" }
+                dt { "Observation" }
+                dd { "{trace.observation_ref}" }
+                if let Some(parse) = trace.parse.as_ref() {
+                    dt { "PNF candidate" }
+                    dd { "{parse.candidate_pnf_ref}" }
+                    dt { "Review" }
+                    dd { "{review_label}" }
+                    if let Some(review_ref) = parse.review_ref.as_ref() {
+                        dt { "Review receipt" }
+                        dd { "{review_ref}" }
+                    }
+                    if let Some(admission_ref) = parse.admission_receipt_ref.as_ref() {
+                        dt { "Admission receipt" }
+                        dd { "{admission_ref}" }
+                    }
+                }
+                dt { "Statement" }
+                dd { "{trace.statement.statement_ref}" }
+                dt { "Exact span" }
+                dd { "{trace.statement.span_ref}" }
+                dt { "Source revision" }
+                dd { "{trace.statement.source_revision_ref}" }
+            }
+            blockquote {
+                style: "margin: 1rem 0 0; padding: 0.75rem; border-left: 3px solid #aaa; white-space: pre-wrap;",
+                "{trace.statement.literal_text}"
+            }
+            if !trace.claim_refs.is_empty() {
+                div {
+                    style: "margin-top: 0.75rem; font-size: 0.9rem;",
+                    strong { "Claims: " }
+                    for claim_ref in trace.claim_refs.iter() {
+                        span { "{claim_ref} " }
+                    }
+                }
+            }
+            if !trace.downstream_use_refs.is_empty() {
+                div {
+                    style: "margin-top: 0.5rem; font-size: 0.9rem;",
+                    strong { "Downstream uses: " }
+                    for use_ref in trace.downstream_use_refs.iter() {
+                        span { "{use_ref} " }
+                    }
+                }
+            }
         }
     }
 }
