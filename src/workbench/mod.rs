@@ -8,6 +8,10 @@ pub mod timeline;
 pub mod review;
 #[cfg(feature = "production-data")]
 pub mod gwb_matter;
+#[cfg(feature = "production-data")]
+pub mod event_discovery;
+#[cfg(feature = "production-data")]
+pub mod operational_timeline;
 pub mod persisted_comparative;
 pub mod comparative;
 pub mod au_fact_review;
