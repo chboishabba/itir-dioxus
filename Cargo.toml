@@ -85,3 +85,9 @@ required-features = ["production-data"]
 name = "s28_operational_timeline_receipt"
 path = "examples/s28_operational_timeline_receipt.rs"
 required-features = ["production-data"]
+
+
+[[example]]
+name = "s29_live_review_action_receipt"
+path = "examples/s29_live_review_action_receipt.rs"
+required-features = ["production-data"]
