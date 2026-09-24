@@ -4,6 +4,8 @@ use dioxus::prelude::*;
 use sensiblaw_reader_model::{
     ChronologyPlacementKind, PropositionContestationView, SemanticTracePath, TraceReviewState,
 };
+#[cfg(feature = "production-data")]
+use sensiblaw_pg_source_store::{ReviewAction, ReviewItem};
 
 use crate::workbench::{
     comparative::ComparativeWorkbenchReadModel, wave5_personal_handoff_read_model,
@@ -11,6 +13,33 @@ use crate::workbench::{
 };
 
 pub fn app() -> Element {
+    #[cfg(feature = "production-data")]
+    if let Ok(scope_path) = std::env::var("SENSIBLAW_MATTER_SCOPE") {
+        let loaded = crate::workbench::matter_scope::load_matter_scope_manifest(&scope_path)
+            .and_then(crate::workbench::matter::load_generic_matter_workspace);
+        return match loaded {
+            Ok(model) => rsx! {
+                document::Title { "SensibLaw Matter" }
+                main {
+                    style: "font-family: sans-serif; max-width: 1180px; margin: 0 auto; padding: 2rem;",
+                    crate::matter_ui::GenericMatterWorkspaceView { model }
+                }
+            },
+            Err(error) => rsx! {
+                document::Title { "SensibLaw Matter · load error" }
+                main {
+                    style: "font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem;",
+                    h1 { "Matter could not be opened" }
+                    p { "{error}" }
+                    p {
+                        style: "font-size: 0.85rem; opacity: 0.75;",
+                        "The existing canonical world is unchanged. Fix the explicit scope/context or persisted-data receipt and reload."
+                    }
+                }
+            },
+        };
+    }
+
     let model = wave5_personal_handoff_read_model();
 
     rsx! {
@@ -588,7 +617,7 @@ pub fn ReviewWorkspaceView(
                 }
                 p {
                     style: "font-size: 0.9rem; opacity: 0.75;",
-                    "Review changes workflow state only. It does not create semantic authority, applicability, or claim truth."
+                    "Actions run through the typed SLR reducer and persist a ReviewReceipt. Review state never creates semantic authority, applicability, or claim truth."
                 }
             }
 
@@ -596,95 +625,207 @@ pub fn ReviewWorkspaceView(
                 p { "No persisted review items are currently queued." }
             } else {
                 for item in model.queue.items.iter() {
-                    {
-                        let kind = format!("{:?}", item.item_kind);
-                        let status = format!("{:?}", item.current_status);
-                        let provenance_count = item.provenance_refs.len();
-                        let source_count = item.source_refs.len();
-                        let consumer_count = item.affected_consumer_refs.len();
-                        rsx! {
-                            article {
-                                style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
-                                header {
-                                    strong { "{kind}" }
-                                    span { " · {status}" }
-                                    div {
-                                        style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
-                                        "{item.review_item_ref}"
-                                    }
-                                }
+                    LiveReviewItemCard { item: item.clone() }
+                }
+            }
+        }
+    }
+}
 
-                                p { "{item.reason}" }
+#[cfg(feature = "production-data")]
+#[component]
+fn LiveReviewItemCard(item: ReviewItem) -> Element {
+    let mut live_item = use_signal(|| item);
+    let mut reviewer_ref = use_signal(|| "operator:local".to_owned());
+    let mut qualification_ref = use_signal(String::new);
+    let mut evidence_request_ref = use_signal(String::new);
+    let mut action_result = use_signal(|| None::<String>);
 
-                                dl {
-                                    style: "display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.25rem 0.75rem;",
-                                    dt { "Semantic object" }
-                                    dd { "{item.semantic_ref}" }
-                                    dt { "Provenance" }
-                                    dd { "{provenance_count} refs" }
-                                    dt { "Sources" }
-                                    dd { "{source_count} refs" }
-                                    dt { "Affected consumers" }
-                                    dd { "{consumer_count} refs" }
-                                }
+    let snapshot = live_item.read().clone();
+    let kind = format!("{:?}", snapshot.item_kind);
+    let status = format!("{:?}", snapshot.current_status);
+    let provenance_count = snapshot.provenance_refs.len();
+    let source_count = snapshot.source_refs.len();
+    let consumer_count = snapshot.affected_consumer_refs.len();
 
-                                if !item.source_refs.is_empty() {
-                                    details {
-                                        style: "margin-top: 0.6rem;",
-                                        summary { "Source refs" }
-                                        ul {
-                                            for source_ref in item.source_refs.iter() {
-                                                li { "{source_ref}" }
+    rsx! {
+        article {
+            style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
+            header {
+                strong { "{kind}" }
+                span { " · {status}" }
+                div {
+                    style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                    "{snapshot.review_item_ref}"
+                }
+            }
+
+            p { "{snapshot.reason}" }
+
+            dl {
+                style: "display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.25rem 0.75rem;",
+                dt { "Semantic object" }
+                dd { "{snapshot.semantic_ref}" }
+                dt { "Provenance" }
+                dd { "{provenance_count} refs" }
+                dt { "Sources" }
+                dd { "{source_count} refs" }
+                dt { "Affected consumers" }
+                dd { "{consumer_count} refs" }
+            }
+
+            if !snapshot.source_refs.is_empty() {
+                details {
+                    style: "margin-top: 0.6rem;",
+                    summary { "Source refs" }
+                    ul {
+                        for source_ref in snapshot.source_refs.iter() {
+                            li { "{source_ref}" }
+                        }
+                    }
+                }
+            }
+
+            if !snapshot.provenance_refs.is_empty() {
+                details {
+                    style: "margin-top: 0.4rem;",
+                    summary { "Provenance refs" }
+                    ul {
+                        for provenance_ref in snapshot.provenance_refs.iter() {
+                            li { "{provenance_ref}" }
+                        }
+                    }
+                }
+            }
+
+            if !snapshot.affected_consumer_refs.is_empty() {
+                details {
+                    style: "margin-top: 0.4rem;",
+                    summary { "Affected consumers" }
+                    ul {
+                        for consumer_ref in snapshot.affected_consumer_refs.iter() {
+                            li { "{consumer_ref}" }
+                        }
+                    }
+                }
+            }
+
+            section {
+                style: "margin-top: 0.8rem; border-top: 1px solid #ddd; padding-top: 0.8rem;",
+                strong { "Live typed actions" }
+
+                label {
+                    style: "display: block; margin-top: 0.6rem; font-size: 0.85rem;",
+                    "Reviewer ref"
+                    input {
+                        style: "display: block; width: min(100%, 32rem); margin-top: 0.2rem;",
+                        value: reviewer_ref(),
+                        oninput: move |event| reviewer_ref.set(event.value())
+                    }
+                }
+
+                if snapshot.available_actions.contains(&ReviewAction::Qualify) {
+                    label {
+                        style: "display: block; margin-top: 0.6rem; font-size: 0.85rem;",
+                        "Qualification ref / note"
+                        input {
+                            style: "display: block; width: min(100%, 40rem); margin-top: 0.2rem;",
+                            placeholder: "required for Qualify",
+                            oninput: move |event| qualification_ref.set(event.value())
+                        }
+                    }
+                }
+
+                if snapshot.available_actions.contains(&ReviewAction::RequestEvidence) {
+                    label {
+                        style: "display: block; margin-top: 0.6rem; font-size: 0.85rem;",
+                        "Evidence request ref / note"
+                        input {
+                            style: "display: block; width: min(100%, 40rem); margin-top: 0.2rem;",
+                            placeholder: "required for Request Evidence",
+                            oninput: move |event| evidence_request_ref.set(event.value())
+                        }
+                    }
+                }
+
+                div {
+                    style: "display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.7rem;",
+                    for action in snapshot.available_actions.iter().copied() {
+                        {
+                            let action_label = format!("{:?}", action);
+                            let result_action_label = action_label.clone();
+                            let review_item_ref = snapshot.review_item_ref.clone();
+                            rsx! {
+                                button {
+                                    style: "border: 1px solid #888; border-radius: 999px; padding: 0.35rem 0.7rem; cursor: pointer;",
+                                    onclick: move |_| {
+                                        let reviewer = reviewer_ref.read().trim().to_owned();
+                                        let qualification = qualification_ref.read().trim().to_owned();
+                                        let evidence = evidence_request_ref.read().trim().to_owned();
+
+                                        let qualification = if action == ReviewAction::Qualify {
+                                            if qualification.is_empty() {
+                                                action_result.set(Some(
+                                                    "Qualify requires an explicit qualification ref / note.".into()
+                                                ));
+                                                return;
+                                            }
+                                            Some(qualification)
+                                        } else {
+                                            None
+                                        };
+
+                                        let evidence_request = if action == ReviewAction::RequestEvidence {
+                                            if evidence.is_empty() {
+                                                action_result.set(Some(
+                                                    "RequestEvidence requires an explicit evidence-request ref / note.".into()
+                                                ));
+                                                return;
+                                            }
+                                            Some(evidence)
+                                        } else {
+                                            None
+                                        };
+
+                                        match crate::workbench::review::execute_review_action(
+                                            &review_item_ref,
+                                            action,
+                                            &reviewer,
+                                            qualification,
+                                            evidence_request,
+                                        ) {
+                                            Ok((receipt, persisted)) => {
+                                                let effect = format!("{:?}", receipt.effect);
+                                                let new_status = format!("{:?}", persisted.current_status);
+                                                live_item.set(persisted);
+                                                action_result.set(Some(format!(
+                                                    "Persisted {result_action_label}: effect={effect}; status={new_status}"
+                                                )));
+                                            }
+                                            Err(error) => {
+                                                action_result.set(Some(format!(
+                                                    "Review action failed: {error}"
+                                                )));
                                             }
                                         }
-                                    }
-                                }
-
-                                if !item.provenance_refs.is_empty() {
-                                    details {
-                                        style: "margin-top: 0.4rem;",
-                                        summary { "Provenance refs" }
-                                        ul {
-                                            for provenance_ref in item.provenance_refs.iter() {
-                                                li { "{provenance_ref}" }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                if !item.affected_consumer_refs.is_empty() {
-                                    details {
-                                        style: "margin-top: 0.4rem;",
-                                        summary { "Affected consumers" }
-                                        ul {
-                                            for consumer_ref in item.affected_consumer_refs.iter() {
-                                                li { "{consumer_ref}" }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                div {
-                                    style: "margin-top: 0.8rem;",
-                                    strong { "Available typed actions" }
-                                    div {
-                                        style: "display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem;",
-                                        for action in item.available_actions.iter() {
-                                            {
-                                                let action_label = format!("{:?}", action);
-                                                rsx! {
-                                                    span {
-                                                        style: "border: 1px solid #aaa; border-radius: 999px; padding: 0.2rem 0.5rem; font-size: 0.8rem;",
-                                                        "{action_label}"
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
+                                    },
+                                    "{action_label}"
                                 }
                             }
                         }
                     }
+                }
+
+                if let Some(result) = action_result.read().as_ref() {
+                    p {
+                        style: "font-size: 0.85rem; margin-top: 0.6rem;",
+                        "{result}"
+                    }
+                }
+
+                p {
+                    style: "font-size: 0.78rem; opacity: 0.7;",
+                    "OpenSource and FollowAuthority are receipted navigation requests and preserve review status. RequestEvidence moves to NeedsEvidence; none of these actions promotes claim truth."
                 }
             }
         }
@@ -786,6 +927,311 @@ fn GwbMatterNavCard(title: &'static str, count: usize) -> Element {
             div {
                 style: "font-size: 0.85rem; margin-top: 0.25rem;",
                 "{count} items"
+            }
+        }
+    }
+}
+
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn EventDiscoveryWorkspaceView(
+    model: crate::workbench::event_discovery::ProductionEventDiscoveryWorkspace,
+) -> Element {
+    rsx! {
+        section {
+            style: "margin-top: 2rem;",
+            header {
+                h2 { "Suggested Event Joins" }
+                p {
+                    "Automatic candidate discovery over source-bound observations. Suggestions require EventAssembly review before any observation → event identity is materialised."
+                }
+                p {
+                    style: "font-size: 0.9rem; opacity: 0.75;",
+                    "Same QID alone is insufficient · candidate-only · no semantic authority or truth promotion"
+                }
+            }
+
+            if model.projection.proposals.is_empty() {
+                p { "No candidate event joins currently meet the configured discovery threshold." }
+            } else {
+                for view in model.projection.proposals.iter() {
+                    article {
+                        style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
+                        header {
+                            strong { "Candidate event join" }
+                            span { " · {view.signal_kind_count} signal kinds" }
+                            div {
+                                style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                "{view.proposal.proposal_ref}"
+                            }
+                        }
+
+                        div {
+                            style: "display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; margin-top: 0.75rem;",
+                            div { "{view.observation_count} observations" }
+                            div { "{view.source_family_count} source families" }
+                            div { "review required" }
+                        }
+
+                        details {
+                            style: "margin-top: 0.75rem;",
+                            summary { "Source observations" }
+                            ul {
+                                for observation_ref in view.proposal.observation_refs.iter() {
+                                    li { "{observation_ref}" }
+                                }
+                            }
+                        }
+
+                        details {
+                            style: "margin-top: 0.4rem;",
+                            summary { "Why this was suggested" }
+                            ul {
+                                for signal in view.proposal.signals.iter() {
+                                    {
+                                        let kind = format!("{:?}", signal.kind);
+                                        rsx! {
+                                            li {
+                                                strong { "{kind}" }
+                                                span { " · {signal.evidence_ref}" }
+                                                div {
+                                                    style: "font-size: 0.8rem; opacity: 0.7;",
+                                                    "detector: {signal.detector_ref}"
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if !view.proposal.statement_refs.is_empty() {
+                            details {
+                                style: "margin-top: 0.4rem;",
+                                summary { "Statement ancestry" }
+                                ul {
+                                    for statement_ref in view.proposal.statement_refs.iter() {
+                                        li { "{statement_ref}" }
+                                    }
+                                }
+                            }
+                        }
+
+                        p {
+                            style: "font-size: 0.85rem; opacity: 0.75;",
+                            "This proposal is not an event. Accept/reject/qualify it through the ordinary Review workspace."
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn OperationalTimelineWorkspaceView(
+    model: crate::workbench::operational_timeline::ProductionOperationalTimelineWorkspace,
+) -> Element {
+    rsx! {
+        section {
+            style: "margin-top: 2rem;",
+            header {
+                h2 { "Work / Activity Timeline" }
+                p {
+                    "Producer-owned StatiBaker operational history: what the operator/system was doing, kept distinct from world/matter events."
+                }
+                p {
+                    style: "font-size: 0.9rem; opacity: 0.75;",
+                    "OperationalEvent ≠ SemanticEvent · opened source ≠ evidence payment · tool use ≠ endorsement"
+                }
+                div {
+                    style: "font-size: 0.85rem; opacity: 0.7;",
+                    "State date: {model.state_date}"
+                }
+            }
+
+            if model.timeline.entries.is_empty() {
+                p { "No imported operational events are available for this state date." }
+            } else {
+                for entry in model.timeline.entries.iter() {
+                    {
+                        let kind = format!("{:?}", entry.event.kind);
+                        let link_count = entry.links.len();
+                        rsx! {
+                            article {
+                                style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
+                                header {
+                                    strong { "{entry.event.label}" }
+                                    span { " · {kind}" }
+                                    div {
+                                        style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                        "{entry.event.operational_event_ref}"
+                                    }
+                                }
+
+                                dl {
+                                    style: "display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.25rem 0.75rem; margin-top: 0.75rem;",
+                                    dt { "Start" }
+                                    dd { "{entry.event.start_time_ref}" }
+                                    dt { "End" }
+                                    dd { "{entry.event.end_time_ref}" }
+                                    dt { "Producer event" }
+                                    dd { "{entry.event.producer_event_ref}" }
+                                    if let Some(app_ref) = entry.event.primary_app_ref.as_ref() {
+                                        dt { "App" }
+                                        dd { "{app_ref}" }
+                                    }
+                                    dt { "Semantic links" }
+                                    dd { "{link_count}" }
+                                }
+
+                                if !entry.links.is_empty() {
+                                    details {
+                                        style: "margin-top: 0.75rem;",
+                                        summary { "Reviewed semantic/workflow links" }
+                                        ul {
+                                            for link in entry.links.iter() {
+                                                {
+                                                    let relation = format!("{:?}", link.relation_kind);
+                                                    let target_kind = format!("{:?}", link.target_kind);
+                                                    rsx! {
+                                                        li {
+                                                            strong { "{relation}" }
+                                                            span { " · {target_kind}: {link.target_ref}" }
+                                                            div {
+                                                                style: "font-size: 0.8rem; opacity: 0.7;",
+                                                                "receipt: {link.relationship_receipt_ref}"
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                details {
+                                    style: "margin-top: 0.4rem;",
+                                    summary { "Operational provenance" }
+                                    ul {
+                                        for provenance_ref in entry.event.provenance_refs.iter() {
+                                            li { "{provenance_ref}" }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn ConversationSourceWorkspaceView(
+    model: crate::workbench::chat_source::ConversationSourceWorkspace,
+) -> Element {
+    rsx! {
+        section {
+            style: "margin-top: 2rem;",
+            header {
+                h2 { "Conversation / Source" }
+                div {
+                    style: "font-size: 0.85rem; opacity: 0.7; overflow-wrap: anywhere;",
+                    "{model.conversation_ref}"
+                }
+                p {
+                    "Archived message chronology with original node/branch identity. Message identity remains distinct from exact statement subspans and from described world events."
+                }
+                p {
+                    style: "font-size: 0.9rem; opacity: 0.75;",
+                    "{model.messages.len()} messages · {model.statement_count} persisted statement spans · {model.inactive_branch_message_count} inactive-branch messages"
+                }
+            }
+
+            if model.messages.is_empty() {
+                p { "No exact-coordinate archived messages are persisted for this conversation." }
+            } else {
+                for view in model.messages.iter() {
+                    {
+                        let role = format!("{:?}", view.source.role);
+                        let branch = format!("{:?}", view.source.branch_membership);
+                        let kind = format!("{:?}", view.source.content_kind);
+                        let statement_count = view.statements.len();
+                        rsx! {
+                            article {
+                                style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
+                                header {
+                                    strong { "{role}" }
+                                    span { " · {branch} · {kind}" }
+                                    div {
+                                        style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                        "message {view.source.message_ref}"
+                                    }
+                                }
+
+                                dl {
+                                    style: "display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.25rem 0.75rem; margin-top: 0.6rem;",
+                                    dt { "Message time" }
+                                    dd { "{view.source.message_time_ref}" }
+                                    dt { "Node" }
+                                    dd { "{view.source.node_ref}" }
+                                    if let Some(parent) = view.source.parent_node_ref.as_ref() {
+                                        dt { "Parent" }
+                                        dd { "{parent}" }
+                                    }
+                                    dt { "Statements" }
+                                    dd { "{statement_count}" }
+                                }
+
+                                details {
+                                    style: "margin-top: 0.7rem;",
+                                    summary { "Exact archived message text" }
+                                    pre {
+                                        style: "white-space: pre-wrap; overflow-wrap: anywhere;",
+                                        "{view.source.literal_text}"
+                                    }
+                                }
+
+                                if view.statements.is_empty() {
+                                    p {
+                                        style: "font-size: 0.85rem; opacity: 0.7;",
+                                        "No M12 statement subspans have been materialised from this message."
+                                    }
+                                } else {
+                                    details {
+                                        style: "margin-top: 0.6rem;",
+                                        summary { "M12 statement subspans" }
+                                        for statement in view.statements.iter() {
+                                            article {
+                                                style: "border-left: 3px solid #aaa; padding-left: 0.7rem; margin-top: 0.6rem;",
+                                                div {
+                                                    style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                                    "{statement.statement_ref}"
+                                                }
+                                                div {
+                                                    style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                                    "span {statement.exact_span_ref}"
+                                                }
+                                                p { "{statement.literal_text}" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            p {
+                style: "font-size: 0.82rem; opacity: 0.7; margin-top: 1rem;",
+                "Inactive assistant generations are preserved as conversation/decision history; they are not automatically independent evidence about the world."
             }
         }
     }

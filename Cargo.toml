@@ -10,7 +10,7 @@ default = ["desktop"]
 desktop = ["dioxus/desktop", "production-data"]
 web = ["dioxus/web"]
 gpu = ["dep:wgpu", "dep:pollster"]
-production-data = ["dep:sensiblaw-reader-model", "dep:sensiblaw-pg-source-store", "dep:sensiblaw-legal-runtime", "dep:postgres"]
+production-data = ["dep:sensiblaw-core", "dep:sensiblaw-reader-model", "dep:sensiblaw-pg-source-store", "dep:sensiblaw-legal-runtime", "dep:postgres"]
 
 [dependencies]
 dioxus = { version = "0.7.10", features = ["router"] }
@@ -19,9 +19,10 @@ serde_json = "1.0"
 wgpu = { version = "29.0.3", optional = true }
 pollster = { version = "0.4", optional = true }
 postgres = { version = "0.19", optional = true }
-sensiblaw-reader-model = { git = "https://github.com/chboishabba/slr", rev = "7ec10d20c8d1d1ec57cc70ea77429af8132d4c63", package = "sensiblaw-reader-model", optional = true }
-sensiblaw-pg-source-store = { git = "https://github.com/chboishabba/slr", rev = "7ec10d20c8d1d1ec57cc70ea77429af8132d4c63", package = "sensiblaw-pg-source-store", optional = true }
-sensiblaw-legal-runtime = { git = "https://github.com/chboishabba/slr", rev = "7ec10d20c8d1d1ec57cc70ea77429af8132d4c63", package = "sensiblaw-legal-runtime", optional = true }
+sensiblaw-core = { git = "https://github.com/chboishabba/slr", rev = "3b245b45ac0c0dd1d64165bc3aae5068332b587c", package = "sensiblaw-core", optional = true }
+sensiblaw-reader-model = { git = "https://github.com/chboishabba/slr", rev = "3b245b45ac0c0dd1d64165bc3aae5068332b587c", package = "sensiblaw-reader-model", optional = true }
+sensiblaw-pg-source-store = { git = "https://github.com/chboishabba/slr", rev = "3b245b45ac0c0dd1d64165bc3aae5068332b587c", package = "sensiblaw-pg-source-store", optional = true }
+sensiblaw-legal-runtime = { git = "https://github.com/chboishabba/slr", rev = "3b245b45ac0c0dd1d64165bc3aae5068332b587c", package = "sensiblaw-legal-runtime", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4"
@@ -73,4 +74,46 @@ required-features = ["production-data"]
 [[example]]
 name = "gwb_matter_receipt"
 path = "examples/gwb_matter_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "s28_event_discovery_receipt"
+path = "examples/s28_event_discovery_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "s28_operational_timeline_receipt"
+path = "examples/s28_operational_timeline_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "s29_live_review_action_receipt"
+path = "examples/s29_live_review_action_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "s28_chat_source_receipt"
+path = "examples/s28_chat_source_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "s30_generic_matter_receipt"
+path = "examples/s30_generic_matter_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "m13_handoff_preview_receipt"
+path = "examples/m13_handoff_preview_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "m13_mary_acceptance_receipt"
+path = "examples/m13_mary_acceptance_receipt.rs"
 required-features = ["production-data"]
