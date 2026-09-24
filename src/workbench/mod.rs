@@ -9,6 +9,8 @@ pub mod review;
 #[cfg(feature = "production-data")]
 pub mod gwb_matter;
 #[cfg(feature = "production-data")]
+pub mod matter;
+#[cfg(feature = "production-data")]
 pub mod chat_source;
 #[cfg(feature = "production-data")]
 pub mod operational_timeline;
