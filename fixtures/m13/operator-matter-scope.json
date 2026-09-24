@@ -1,0 +1,134 @@
+{
+  "schema": "sensiblaw.matter-scope.v0_1",
+  "matter_ref": "matter:m13:operator-capstone",
+  "event_refs": [
+    "event:m13:operator:reviewed",
+    "event:m13:operator:undated"
+  ],
+  "operational_dates": [
+    "2026-09-24"
+  ],
+  "context": {
+    "purpose": "handoff-preparation",
+    "role": "support-operator",
+    "disclosure_boundary": "role-scoped",
+    "knowledge_time_cut_ref": "knowledge-cut:m13:operator:2026-09-24",
+    "sealed_refs": [
+      "claim:m13:operator:sealed"
+    ]
+  },
+  "visibility": [
+    {
+      "semantic_ref": "event:m13:operator:reviewed",
+      "allowed_roles": ["support-operator", "lawyer"],
+      "allowed_purposes": ["handoff-preparation", "legal-advocacy"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    },
+    {
+      "semantic_ref": "event:m13:operator:undated",
+      "allowed_roles": ["support-operator", "lawyer"],
+      "allowed_purposes": ["handoff-preparation", "legal-advocacy"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    },
+    {
+      "semantic_ref": "claim:m13:operator:a",
+      "allowed_roles": ["support-operator", "lawyer"],
+      "allowed_purposes": ["handoff-preparation", "legal-advocacy"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    },
+    {
+      "semantic_ref": "claim:m13:operator:b",
+      "allowed_roles": ["support-operator", "lawyer"],
+      "allowed_purposes": ["handoff-preparation", "legal-advocacy"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    },
+    {
+      "semantic_ref": "claim:m13:operator:sealed",
+      "allowed_roles": ["support-operator"],
+      "allowed_purposes": ["handoff-preparation"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": true
+    },
+    {
+      "semantic_ref": "statement:m13:operator:no-event",
+      "allowed_roles": ["support-operator", "lawyer"],
+      "allowed_purposes": ["handoff-preparation", "legal-advocacy"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    },
+    {
+      "semantic_ref": "review:m13:operator:event-assembly",
+      "allowed_roles": ["support-operator", "lawyer"],
+      "allowed_purposes": ["handoff-preparation", "legal-advocacy"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    },
+    {
+      "semantic_ref": "operational:statibaker:2026-09-24:m13-capstone",
+      "allowed_roles": ["support-operator"],
+      "allowed_purposes": ["handoff-preparation"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    },
+    {
+      "semantic_ref": "outstanding:m13:operator:followup",
+      "allowed_roles": ["support-operator"],
+      "allowed_purposes": ["handoff-preparation"],
+      "knowledge_membership": "known-at-cut",
+      "explicitly_selected": true,
+      "sealed": false
+    }
+  ],
+  "knowledge_timeline": [
+    {
+      "semantic_ref": "claim:m13:operator:a",
+      "source_revision_ref": "source-revision:m13:operator:chat-a",
+      "knowledge_time_ref": "knowledge-time:2026-09-24T10:00:00+10:00",
+      "knowledge_membership": "known-at-cut",
+      "source_role_ref": "chat"
+    },
+    {
+      "semantic_ref": "event:m13:operator:reviewed",
+      "source_revision_ref": "source-revision:m13:operator:note-b",
+      "knowledge_time_ref": "knowledge-time:2026-09-24T11:00:00+10:00",
+      "knowledge_membership": "known-at-cut",
+      "source_role_ref": "operator-note"
+    }
+  ],
+  "legal_proof_refs": [],
+  "research_refs": [],
+  "work_product_refs": [],
+  "handoff_refs": [
+    "handoff:m13:operator"
+  ],
+  "no_event_refs": [
+    "statement:m13:operator:no-event"
+  ],
+  "acceptance_roles": [
+    {
+      "semantic_ref": "claim:m13:operator:a",
+      "role": "party-assertion",
+      "review_ref": "review:m13:operator:party-assertion"
+    },
+    {
+      "semantic_ref": "event:m13:operator:reviewed",
+      "role": "procedural-outcome",
+      "review_ref": "review:m13:operator:procedural-outcome"
+    }
+  ],
+  "procedural_significance_review_refs": [
+    "review:m13:operator:event-assembly"
+  ]
+}
