@@ -99,3 +99,15 @@ required-features = ["production-data"]
 name = "s28_chat_source_receipt"
 path = "examples/s28_chat_source_receipt.rs"
 required-features = ["production-data"]
+
+
+[[example]]
+name = "s30_generic_matter_receipt"
+path = "examples/s30_generic_matter_receipt.rs"
+required-features = ["production-data"]
+
+
+[[example]]
+name = "m13_handoff_preview_receipt"
+path = "examples/m13_handoff_preview_receipt.rs"
+required-features = ["production-data"]
