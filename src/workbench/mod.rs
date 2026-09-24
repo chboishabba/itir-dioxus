@@ -6,6 +6,8 @@ pub mod semantic_trace;
 pub mod timeline;
 #[cfg(feature = "production-data")]
 pub mod review;
+#[cfg(feature = "production-data")]
+pub mod gwb_matter;
 pub mod persisted_comparative;
 pub mod comparative;
 pub mod au_fact_review;
