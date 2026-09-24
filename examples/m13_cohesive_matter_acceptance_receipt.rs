@@ -102,6 +102,27 @@ fn main() -> Result<(), String> {
     )?;
     require_nonzero("event_entries", acceptance.event_entry_count)?;
 
+    if !acceptance.event_without_source_trace_refs.is_empty() {
+        return Err(format!(
+            "events are not source-reopenable: {:?}",
+            acceptance.event_without_source_trace_refs
+        ));
+    }
+    if !acceptance.claim_without_source_trace_refs.is_empty() {
+        return Err(format!(
+            "claims are not source-reopenable: {:?}",
+            acceptance.claim_without_source_trace_refs
+        ));
+    }
+
+    if projection.context_projection.invisibility_means_false
+        || projection.context_projection.unshared_means_absent
+        || projection.context_projection.role_visibility_creates_truth
+        || projection.context_projection.later_knowledge_rewrites_cut
+    {
+        return Err("MatterContext projection crossed visibility/knowledge boundary".into());
+    }
+
     if projection.canonical_world_mutated
         || projection.creates_semantic_authority
         || projection.claim_truth_promoted
@@ -171,6 +192,19 @@ fn main() -> Result<(), String> {
                 projection.context_projection.exclusions.len(),
             )?;
             require_nonzero("redacted_refs", preview.redacted_refs.len())?;
+            let included = projection
+                .context_projection
+                .included_refs
+                .iter()
+                .collect::<std::collections::BTreeSet<_>>();
+            if projection
+                .context_projection
+                .exclusions
+                .iter()
+                .any(|exclusion| included.contains(&exclusion.semantic_ref))
+            {
+                return Err("context exclusion leaked into included refs".into());
+            }
 
             if acceptance.missing_date_event_refs.is_empty()
                 && acceptance.missing_actor_claim_refs.is_empty()
@@ -282,6 +316,22 @@ fn main() -> Result<(), String> {
         projection.creates_semantic_authority
     );
     println!("claim_truth_promoted={}", projection.claim_truth_promoted);
+    println!(
+        "hidden_means_false={}",
+        projection.context_projection.invisibility_means_false
+    );
+    println!(
+        "unshared_means_absent={}",
+        projection.context_projection.unshared_means_absent
+    );
+    println!(
+        "event_without_source_trace_count={}",
+        acceptance.event_without_source_trace_refs.len()
+    );
+    println!(
+        "claim_without_source_trace_count={}",
+        acceptance.claim_without_source_trace_refs.len()
+    );
 
     Ok(())
 }
