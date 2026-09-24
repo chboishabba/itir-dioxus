@@ -74,3 +74,14 @@ required-features = ["production-data"]
 name = "gwb_matter_receipt"
 path = "examples/gwb_matter_receipt.rs"
 required-features = ["production-data"]
+
+
+[[example]]
+name = "s28_event_discovery_receipt"
+path = "examples/s28_event_discovery_receipt.rs"
+required-features = ["production-data"]
+
+[[example]]
+name = "s28_operational_timeline_receipt"
+path = "examples/s28_operational_timeline_receipt.rs"
+required-features = ["production-data"]
