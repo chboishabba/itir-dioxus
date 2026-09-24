@@ -398,6 +398,9 @@ pub fn TimelineWorkspaceView(
                             .get(&entry.event_ref)
                             .cloned()
                             .unwrap_or_default();
+                        let observation_count = entry.observation_refs.len();
+                        let statement_count = entry.statement_refs.len();
+                        let claim_count = entry.claim_refs.len();
                         rsx! {
                             details {
                                 style: "border: 1px solid #aaa; border-radius: 0.6rem; margin-top: 0.75rem; padding: 0.8rem;",
@@ -413,9 +416,9 @@ pub fn TimelineWorkspaceView(
 
                                 div {
                                     style: "display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; margin-top: 0.8rem;",
-                                    div { "{entry.observation_refs.len()} observations" }
-                                    div { "{entry.statement_refs.len()} statements" }
-                                    div { "{entry.claim_refs.len()} claims" }
+                                    div { "{observation_count} observations" }
+                                    div { "{statement_count} statements" }
+                                    div { "{claim_count} claims" }
                                 }
 
                                 if let Some(relative_ref) = entry.relative_event_ref.as_ref() {
@@ -511,6 +514,8 @@ fn FactsClaimsWorkspaceView(views: Vec<PropositionContestationView>) -> Element 
                                         let kind = format!("{:?}", leaf.kind);
                                         let review = format!("{:?}", leaf.review_state);
                                         let speaker = leaf.speaker_ref.as_deref().unwrap_or("speaker unknown");
+                                        let statement_count = leaf.statement_refs.len();
+                                        let observation_count = leaf.observation_refs.len();
                                         rsx! {
                                             li {
                                                 strong { "{kind}" }
@@ -521,7 +526,7 @@ fn FactsClaimsWorkspaceView(views: Vec<PropositionContestationView>) -> Element 
                                                 }
                                                 div {
                                                     style: "font-size: 0.8rem;",
-                                                    "{leaf.statement_refs.len()} statements · {leaf.observation_refs.len()} observations"
+                                                    "{statement_count} statements · {observation_count} observations"
                                                 }
                                             }
                                         }
