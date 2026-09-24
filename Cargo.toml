@@ -50,3 +50,9 @@ required-features = ["production-data", "gpu"]
 name = "m11_postgres_pabai_gpu_receipt"
 path = "examples/m11_postgres_pabai_gpu_receipt.rs"
 required-features = ["production-data", "gpu"]
+
+
+[[example]]
+name = "m12_semantic_trace_receipt"
+path = "examples/m12_semantic_trace_receipt.rs"
+required-features = ["production-data"]
