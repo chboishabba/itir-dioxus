@@ -1102,3 +1102,110 @@ pub fn OperationalTimelineWorkspaceView(
         }
     }
 }
+
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn ConversationSourceWorkspaceView(
+    model: crate::workbench::chat_source::ConversationSourceWorkspace,
+) -> Element {
+    rsx! {
+        section {
+            style: "margin-top: 2rem;",
+            header {
+                h2 { "Conversation / Source" }
+                div {
+                    style: "font-size: 0.85rem; opacity: 0.7; overflow-wrap: anywhere;",
+                    "{model.conversation_ref}"
+                }
+                p {
+                    "Archived message chronology with original node/branch identity. Message identity remains distinct from exact statement subspans and from described world events."
+                }
+                p {
+                    style: "font-size: 0.9rem; opacity: 0.75;",
+                    "{model.messages.len()} messages · {model.statement_count} persisted statement spans · {model.inactive_branch_message_count} inactive-branch messages"
+                }
+            }
+
+            if model.messages.is_empty() {
+                p { "No exact-coordinate archived messages are persisted for this conversation." }
+            } else {
+                for view in model.messages.iter() {
+                    {
+                        let role = format!("{:?}", view.source.role);
+                        let branch = format!("{:?}", view.source.branch_membership);
+                        let kind = format!("{:?}", view.source.content_kind);
+                        let statement_count = view.statements.len();
+                        rsx! {
+                            article {
+                                style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 1rem; margin-top: 0.75rem;",
+                                header {
+                                    strong { "{role}" }
+                                    span { " · {branch} · {kind}" }
+                                    div {
+                                        style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                        "message {view.source.message_ref}"
+                                    }
+                                }
+
+                                dl {
+                                    style: "display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 0.25rem 0.75rem; margin-top: 0.6rem;",
+                                    dt { "Message time" }
+                                    dd { "{view.source.message_time_ref}" }
+                                    dt { "Node" }
+                                    dd { "{view.source.node_ref}" }
+                                    if let Some(parent) = view.source.parent_node_ref.as_ref() {
+                                        dt { "Parent" }
+                                        dd { "{parent}" }
+                                    }
+                                    dt { "Statements" }
+                                    dd { "{statement_count}" }
+                                }
+
+                                details {
+                                    style: "margin-top: 0.7rem;",
+                                    summary { "Exact archived message text" }
+                                    pre {
+                                        style: "white-space: pre-wrap; overflow-wrap: anywhere;",
+                                        "{view.source.literal_text}"
+                                    }
+                                }
+
+                                if view.statements.is_empty() {
+                                    p {
+                                        style: "font-size: 0.85rem; opacity: 0.7;",
+                                        "No M12 statement subspans have been materialised from this message."
+                                    }
+                                } else {
+                                    details {
+                                        style: "margin-top: 0.6rem;",
+                                        summary { "M12 statement subspans" }
+                                        for statement in view.statements.iter() {
+                                            article {
+                                                style: "border-left: 3px solid #aaa; padding-left: 0.7rem; margin-top: 0.6rem;",
+                                                div {
+                                                    style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                                    "{statement.statement_ref}"
+                                                }
+                                                div {
+                                                    style: "font-size: 0.8rem; opacity: 0.7; overflow-wrap: anywhere;",
+                                                    "span {statement.exact_span_ref}"
+                                                }
+                                                p { "{statement.literal_text}" }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            p {
+                style: "font-size: 0.82rem; opacity: 0.7; margin-top: 1rem;",
+                "Inactive assistant generations are preserved as conversation/decision history; they are not automatically independent evidence about the world."
+            }
+        }
+    }
+}
