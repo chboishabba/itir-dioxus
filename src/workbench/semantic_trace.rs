@@ -60,7 +60,7 @@ pub fn load_semantic_traces_for_event(event_ref: &str) -> Result<Vec<SemanticTra
                 },
                 parse: Some(ParseTraceCoordinate {
                     candidate_pnf_ref: statement_link.candidate_pnf_ref,
-                    parser_receipt_ref: None,
+                    parser_receipt_ref: statement_link.parser_receipt_ref,
                     review_ref: statement_link.parse_review_ref,
                     admission_receipt_ref: statement_link.admission_receipt_ref,
                     review_state: review_state(statement_link.disposition),
