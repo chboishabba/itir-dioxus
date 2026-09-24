@@ -1,6 +1,12 @@
 #![cfg(feature = "production-data")]
 
-use sensiblaw_pg_source_store::{load_database_config, load_review_queue};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use sensiblaw_pg_source_store::{
+    apply_persisted_review_command, load_database_config, load_review_queue,
+    ReviewAction, ReviewCommand, ReviewItem,
+};
 use sensiblaw_reader_model::{project_review_queue, ReviewQueueProjection};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,6 +30,42 @@ pub fn load_production_review_workspace() -> Result<ProductionReviewWorkspace, S
         applicability_promoted: false,
         claim_truth_promoted: false,
     })
+}
+
+static REVIEW_COMMAND_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+pub fn execute_review_action(
+    review_item_ref: &str,
+    action: ReviewAction,
+    reviewer_ref: &str,
+    qualification_ref: Option<String>,
+    evidence_request_ref: Option<String>,
+) -> Result<ReviewItem, String> {
+    if review_item_ref.trim().is_empty() || reviewer_ref.trim().is_empty() {
+        return Err("review item and reviewer refs are required".into());
+    }
+
+    let millis = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| error.to_string())?
+        .as_millis();
+    let ordinal = REVIEW_COMMAND_COUNTER.fetch_add(1, Ordering::Relaxed);
+    let command = ReviewCommand {
+        command_ref: format!(
+            "review-command:{review_item_ref}:{reviewer_ref}:{millis}:{ordinal}"
+        ),
+        review_item_ref: review_item_ref.to_owned(),
+        action,
+        reviewer_ref: reviewer_ref.to_owned(),
+        qualification_ref,
+        evidence_request_ref,
+    };
+
+    let config = load_database_config(None).map_err(|error| error.to_string())?;
+    let (_receipt, item) =
+        apply_persisted_review_command(&config, &command)
+            .map_err(|error| error.to_string())?;
+    Ok(item)
 }
 
 #[cfg(test)]
