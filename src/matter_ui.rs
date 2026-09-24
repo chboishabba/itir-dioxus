@@ -742,8 +742,48 @@ fn MatterAcceptancePanel(
             }
 
             AcceptanceRefSection {
+                title: "Exact-dated events",
+                refs: receipt.exact_event_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Approximate events",
+                refs: receipt.approximate_event_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Relative-only events",
+                refs: receipt.relative_event_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Undated events",
+                refs: receipt.undated_event_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Unknown-date events",
+                refs: receipt.unknown_date_event_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
                 title: "Missing date / undated / unknown chronology",
                 refs: receipt.missing_date_event_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Events without a source-trace reopening path",
+                refs: receipt.event_without_source_trace_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Claims without a visible source-trace reopening path",
+                refs: receipt.claim_without_source_trace_refs.clone(),
+                selected_ref
+            }
+            AcceptanceRefSection {
+                title: "Source traces without downstream event / claim / use",
+                refs: receipt.source_trace_without_downstream_refs.clone(),
                 selected_ref
             }
             AcceptanceRefSection {
