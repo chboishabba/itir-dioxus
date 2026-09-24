@@ -899,7 +899,7 @@ dependencies = [
  "dtoa-short",
  "itoa",
  "matches",
- "phf 0.10.1",
+ "phf 0.8.0",
  "proc-macro2",
  "quote",
  "smallvec",
@@ -915,7 +915,7 @@ dependencies = [
  "cssparser-macros",
  "dtoa-short",
  "itoa",
- "phf 0.11.3",
+ "phf 0.8.0",
  "smallvec",
 ]
 
@@ -1607,7 +1607,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1782,7 +1782,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2951,6 +2951,7 @@ dependencies = [
  "pollster",
  "postgres",
  "pretty_assertions",
+ "sensiblaw-core",
  "sensiblaw-legal-runtime",
  "sensiblaw-pg-source-store",
  "sensiblaw-reader-model",
@@ -4056,7 +4057,9 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3dfb61232e34fcb633f43d12c58f83c1df82962dcdfa565a4e866ffc17dafe12"
 dependencies = [
+ "phf_macros",
  "phf_shared 0.8.0",
+ "proc-macro-hack",
 ]
 
 [[package]]
@@ -4065,9 +4068,7 @@ version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fabbf1ead8a5bcbc20f5f8b939ee3f5b0f6f281b6ad3468b84656b658b455259"
 dependencies = [
- "phf_macros 0.10.0",
  "phf_shared 0.10.0",
- "proc-macro-hack",
 ]
 
 [[package]]
@@ -4076,7 +4077,6 @@ version = "0.11.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1fd6780a80ae0c52cc120a26a1a42c1ae51b247a253e4e06113d23d2c2edd078"
 dependencies = [
- "phf_macros 0.11.3",
  "phf_shared 0.11.3",
 ]
 
@@ -4152,29 +4152,16 @@ dependencies = [
 
 [[package]]
 name = "phf_macros"
-version = "0.10.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58fdf3184dd560f160dd73922bea2d5cd6e8f064bf4b13110abd81b03697b4e0"
+checksum = "7f6fde18ff429ffc8fe78e2bf7f8b7a5a5a6e2a8b58bc5a9ac69198bbda9189c"
 dependencies = [
- "phf_generator 0.10.0",
- "phf_shared 0.10.0",
+ "phf_generator 0.8.0",
+ "phf_shared 0.8.0",
  "proc-macro-hack",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "phf_macros"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f84ac04429c13a7ff43785d75ad27569f2951ce0ffd30a3321230db2fc727216"
-dependencies = [
- "phf_generator 0.11.3",
- "phf_shared 0.11.3",
- "proc-macro2",
- "quote",
- "syn 2.0.117",
 ]
 
 [[package]]
@@ -5044,7 +5031,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5213,7 +5200,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-consumer-residual"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-world-store",
  "thiserror 1.0.69",
@@ -5222,17 +5209,17 @@ dependencies = [
 [[package]]
 name = "sensiblaw-core"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 
 [[package]]
 name = "sensiblaw-evidential-reopen"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 
 [[package]]
 name = "sensiblaw-governed-legal-provider"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-legal-follow-plan",
  "serde",
@@ -5245,7 +5232,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-legal-counterfactual"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-semantic-status",
 ]
@@ -5253,7 +5240,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-legal-follow-plan"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-legal-counterfactual",
 ]
@@ -5261,7 +5248,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-legal-runtime"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-consumer-residual",
  "sensiblaw-core",
@@ -5279,7 +5266,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-nsw-legislation-provider"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-governed-legal-provider",
  "sha2 0.10.9",
@@ -5289,7 +5276,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-pg-source-store"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "dotenvy",
  "postgres",
@@ -5304,7 +5291,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-proof-search-loop"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-consumer-residual",
  "sensiblaw-core",
@@ -5328,7 +5315,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-proof-search-scheduler"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-legal-follow-plan",
 ]
@@ -5336,7 +5323,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-reader-model"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-core",
  "serde",
@@ -5346,7 +5333,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-reviewed-evidence-payment"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-consumer-residual",
  "sensiblaw-core",
@@ -5357,7 +5344,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-route-executor"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "scraper",
  "sensiblaw-route-selector",
@@ -5371,7 +5358,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-route-selector"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-world-store",
  "thiserror 1.0.69",
@@ -5380,7 +5367,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-semantic-expansion"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-core",
 ]
@@ -5388,7 +5375,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-semantic-status"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "sensiblaw-core",
  "sensiblaw-semantic-expansion",
@@ -5397,7 +5384,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-wikimedia-candidate-provider"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "quick-xml",
  "sensiblaw-route-selector",
@@ -5410,7 +5397,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-world-store"
 version = "0.2.0"
-source = "git+https://github.com/chboishabba/slr?rev=7ec10d20c8d1d1ec57cc70ea77429af8132d4c63#7ec10d20c8d1d1ec57cc70ea77429af8132d4c63"
+source = "git+https://github.com/chboishabba/slr?rev=6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8#6e48b57edb99e4e8c003c8c5d74a0bd2b4d355b8"
 dependencies = [
  "dotenvy",
  "postgres",
@@ -5713,7 +5700,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -5971,7 +5958,7 @@ dependencies = [
  "getrandom 0.4.2",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -7121,7 +7108,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
