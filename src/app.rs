@@ -690,3 +690,103 @@ pub fn ReviewWorkspaceView(
         }
     }
 }
+
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn GwbMatterWorkspaceView(
+    model: crate::workbench::gwb_matter::GwbMatterWorkspace,
+) -> Element {
+    let event_count = model.event_refs.len();
+    let source_family_count = model.source_family_refs.len();
+    let research_count = model.research_review_item_refs.len();
+    let claim_count = model
+        .timeline
+        .chronology
+        .proposition_views
+        .iter()
+        .map(|view| view.leaves.len())
+        .sum::<usize>();
+    let review_count = model.review.queue.items.len();
+
+    rsx! {
+        section {
+            style: "margin-top: 2rem;",
+            header {
+                h1 { "Matter: George W. Bush corpus" }
+                div {
+                    style: "font-size: 0.85rem; opacity: 0.75; overflow-wrap: anywhere;",
+                    "{model.matter_ref}"
+                }
+                p {
+                    "One matter-scoped chronology over heterogeneous reviewed sources; accounts remain separately inspectable."
+                }
+                p {
+                    style: "font-size: 0.9rem; opacity: 0.75;",
+                    "Read projection only · no source, event, claim, applicability, or truth promotion"
+                }
+            }
+
+            nav {
+                style: "display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.6rem; margin-top: 1rem;",
+                GwbMatterNavCard { title: "Sources", count: source_family_count }
+                GwbMatterNavCard { title: "Timeline", count: event_count }
+                GwbMatterNavCard { title: "Facts / Claims", count: claim_count }
+                GwbMatterNavCard { title: "Review", count: review_count }
+                GwbMatterNavCard { title: "Research", count: research_count }
+            }
+
+            section {
+                style: "margin-top: 2rem;",
+                h2 { "Sources" }
+                p {
+                    "{model.source_statement_count} reviewed statement selections across {source_family_count} source families"
+                }
+                div {
+                    style: "font-size: 0.8rem; opacity: 0.75; overflow-wrap: anywhere;",
+                    "Handoff: {model.handoff_ref}"
+                }
+                ul {
+                    for family in model.source_family_refs.iter() {
+                        li { "{family}" }
+                    }
+                }
+            }
+
+            TimelineWorkspaceView { model: model.timeline.clone() }
+
+            ReviewWorkspaceView { model: model.review.clone() }
+
+            section {
+                style: "margin-top: 2rem;",
+                h2 { "Research" }
+                if model.research_review_item_refs.is_empty() {
+                    p {
+                        "No GWB research-acquisition / authority-follow review item is currently scoped to this matter."
+                    }
+                } else {
+                    ul {
+                        for review_ref in model.research_review_item_refs.iter() {
+                            li { "{review_ref}" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "production-data")]
+#[component]
+fn GwbMatterNavCard(title: &'static str, count: usize) -> Element {
+    rsx! {
+        div {
+            style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 0.7rem;",
+            strong { "{title}" }
+            div {
+                style: "font-size: 0.85rem; margin-top: 0.25rem;",
+                "{count} items"
+            }
+        }
+    }
+}
