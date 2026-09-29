@@ -23,6 +23,8 @@ pub mod operational_timeline;
 #[cfg(feature = "production-data")]
 pub mod mixed_source;
 #[cfg(feature = "production-data")]
+pub mod correspondence_review;
+#[cfg(feature = "production-data")]
 pub mod event_discovery;
 pub mod persisted_comparative;
 pub mod comparative;
