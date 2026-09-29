@@ -13,6 +13,46 @@ use crate::workbench::{
 };
 
 pub fn app() -> Element {
+    // Explicit pair selector: the UI never scans and auto-merges identical
+    // phrases across chat/transcripts. Scope controls observer visibility.
+    #[cfg(feature = "production-data")]
+    if let (Ok(left), Ok(right)) = (
+        std::env::var("ITIR_MIXED_LEFT_REV"),
+        std::env::var("ITIR_MIXED_RIGHT_REV"),
+    ) {
+        use sensiblaw_pg_source_store::ContextVisibility;
+        let scope=std::env::var("ITIR_MIXED_OBSERVER_SCOPE")
+            .unwrap_or_else(|_| "unavailable".into());
+        let visibility=match scope.as_str() {
+            "available"=>ContextVisibility::Available,
+            "excluded"=>ContextVisibility::ExcludedByScope,
+            "redacted"=>ContextVisibility::Redacted,
+            _=>ContextVisibility::Unavailable,
+        };
+        let chat_message_ref=std::env::var("ITIR_MIXED_CHAT_MESSAGE_REF").ok();
+        let loaded=crate::workbench::mixed_source::load_mixed_source_workspace(
+            &left,&right,chat_message_ref.as_deref(),visibility,&scope,
+        );
+        return match loaded {
+            Ok(model)=>rsx! {
+                document::Title { "ITIR Mixed-Source Review" }
+                main {
+                    style:"font-family: sans-serif; max-width: 1220px; margin: 0 auto; padding: 1.5rem;",
+                    MixedSourceDualLensView { model }
+                }
+            },
+            Err(error)=>rsx! {
+                document::Title { "ITIR mixed-source data unavailable" }
+                main {
+                    style:"font-family: sans-serif; max-width: 1000px; margin: 0 auto; padding: 2rem;",
+                    h1 {"Mixed-source review unavailable"}
+                    p {"{error}"}
+                    p {"No semantic relationship or operational activity is inferred from unavailable source records."}
+                }
+            },
+        };
+    }
+
     #[cfg(feature = "production-data")]
     if let Ok(scope_path) = std::env::var("SENSIBLAW_MATTER_SCOPE") {
         let loaded = crate::workbench::matter_scope::load_matter_scope_manifest(&scope_path)
@@ -1232,6 +1272,146 @@ pub fn ConversationSourceWorkspaceView(
             p {
                 style: "font-size: 0.82rem; opacity: 0.7; margin-top: 1rem;",
                 "Inactive assistant generations are preserved as conversation/decision history; they are not automatically independent evidence about the world."
+            }
+        }
+    }
+}
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn MixedSourceDualLensView(
+    model: crate::workbench::mixed_source::MixedSourceWorkspace,
+) -> Element {
+    use crate::visual::command::{DomainCommand, VisualObjectId};
+    use sensiblaw_pg_source_store::{
+        ContextVisibility, GenealogyStatus, SemanticComparison,
+    };
+    let mut selected = use_signal(|| None::<VisualObjectId>);
+    let mut operational_lens = use_signal(|| false);
+    let comparison = &model.comparison;
+    let semantic_label=match comparison.semantic_comparison {
+        SemanticComparison::SharedCandidateFingerprint =>
+            "Shared PNF candidate fingerprints — subject identity unreviewed",
+        SemanticComparison::NoSharedCandidateFingerprint =>
+            "No matching stored L2 fingerprints — not proof of different subjects",
+        SemanticComparison::InsufficientPnf =>
+            "PNF comparison unavailable or insufficient",
+    };
+    let genealogy_label=match comparison.genealogy {
+        GenealogyStatus::ExactNativeTextCorrespondence =>
+            "Native text correspondence; copying remains a separate question",
+        GenealogyStatus::SourceBackreferenceUnverified =>
+            "Qualified source backreference; derivation not independently certified",
+        GenealogyStatus::NoRecordedLineage =>
+            "No recorded provenance lineage; absence is not disproof",
+    };
+    let observer_label=match comparison.operational_visibility {
+        ContextVisibility::Available=>"Operational observations available",
+        ContextVisibility::NotObserved=>"No linked operational events observed in this scope",
+        ContextVisibility::Unavailable=>"Operational records unavailable",
+        ContextVisibility::ExcludedByScope=>"Operational records excluded by this scope",
+        ContextVisibility::Redacted=>"Operational records redacted",
+    };
+    let graph=if operational_lens() { &model.operational_graph } else { &model.graph };
+    let inspected=selected().and_then(|id| model.inspect(id,operational_lens()));
+    rsx! {
+        section {
+            header {
+                h1 {"Mixed-source investigation"}
+                p {"Two lenses, separate source authorities, one typed selection vocabulary."}
+                p {
+                    style:"font-size: 0.875rem; opacity: 0.8;",
+                    "Scope: {model.scope_label} · Candidate-only · Review pending · No truth promotion"
+                }
+            }
+            div {
+                style:"display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 1rem;",
+                article {
+                    style:"border: 1px solid #777; border-radius: 0.7rem; padding: 1rem;",
+                    h2 {"Source A"}
+                    p {style:"overflow-wrap: anywhere;", "{comparison.left_source_revision_ref}"}
+                    p {"Persisted candidate statements: {comparison.left_statement_refs.len()}"}
+                }
+                article {
+                    style:"border: 1px solid #777; border-radius: 0.7rem; padding: 1rem;",
+                    h2 {"Source B"}
+                    p {style:"overflow-wrap: anywhere;", "{comparison.right_source_revision_ref}"}
+                    p {"Persisted candidate statements: {comparison.right_statement_refs.len()}"}
+                }
+            }
+            section {
+                style:"margin-top: 1rem; border: 1px solid #888; border-radius: 0.7rem; padding: 1rem;",
+                h2 {"Context and provenance"}
+                p {"{semantic_label}"}
+                p {"{genealogy_label}"}
+                p {"{observer_label}"}
+                p {
+                    "Independent witnesses established: not assessed. "
+                    "Identical text, common candidate factors and temporal proximity are not corroboration."
+                }
+                if comparison.semantic_review_pending {
+                    p {"Semantic relation remains unresolved until reviewed."}
+                }
+            }
+            section {
+                style:"margin-top: 1rem;",
+                h2 {"Source relationship lenses"}
+                button {
+                    type:"button",
+                    onclick:move |_| { operational_lens.set(false); selected.set(None); },
+                    "PNF candidate comparison"
+                }
+                button {
+                    type:"button",
+                    style:"margin-left: .5rem;",
+                    onclick:move |_| { operational_lens.set(true); selected.set(None); },
+                    "Operational history"
+                }
+                p {
+                    style:"font-size: 0.875rem; opacity: 0.8;",
+                    "Graph nodes are source-linked proposals. Selecting an object does not change review state."
+                }
+                div {
+                    style:"display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .5rem;",
+                    for node in graph.nodes.iter() {
+                        button {
+                            key:"{node.semantic_ref}",
+                            type:"button",
+                            style:"text-align: left; border: 1px solid #888; border-radius: .4rem; padding: .7rem; background: transparent; color: inherit;",
+                            onclick: {
+                                let id=node.id;
+                                move |_| {
+                                    let command=crate::visual::command::decode_shell(
+                                        crate::visual::command::ShellInput::Select(id)
+                                    );
+                                    if let DomainCommand::SelectObject(value) = command {
+                                        selected.set(Some(value));
+                                    }
+                                }
+                            },
+                            strong {"{node.label}"}
+                            div {style:"font-size: .8rem; opacity: .8;", "{node.kind}"}
+                        }
+                    }
+                }
+                if let Some(inspection)=inspected {
+                    article {
+                        style:"border-left: 4px solid #4787c9; padding: .7rem 1rem; margin-top: 1rem;",
+                        h3 {"Selected source object"}
+                        p {style:"overflow-wrap: anywhere;", "{inspection.semantic_ref}"}
+                        h4 {"Source refs"}
+                        for source_ref in inspection.source_refs.iter() {
+                            p {style:"overflow-wrap: anywhere;", "{source_ref}"}
+                        }
+                        h4 {"Provenance refs"}
+                        if inspection.provenance_refs.is_empty() {
+                            p {"No additional attached provenance in this read projection."}
+                        }
+                        for provenance_ref in inspection.provenance_refs.iter() {
+                            p {style:"overflow-wrap: anywhere;", "{provenance_ref}"}
+                        }
+                    }
+                }
             }
         }
     }
