@@ -1445,6 +1445,7 @@ fn MixedSourceRelationReviewPanel(
     let consumer_scope=std::env::var("ITIR_MIXED_CONSUMER_SCOPE")
         .ok().filter(|s|!s.trim().is_empty());
     let chat_message_ref=std::env::var("ITIR_MIXED_CHAT_MESSAGE_REF").ok();
+    let matter_scope_loaded=std::env::var("SENSIBLAW_MATTER_SCOPE").is_ok();
 
     let mut candidates=Vec::new();
     for witness in &model.comparison.shared_entity_candidate_refs {
@@ -1479,11 +1480,12 @@ fn MixedSourceRelationReviewPanel(
                 "Review is about this proposed relationship, not the truth of either source. "
                 "A candidate must have a stored PNF fingerprint or native source-join witness."
             }
-            if consumer_scope.is_none() {
+            if consumer_scope.is_none() || !matter_scope_loaded {
                 p {
                     style:"font-weight: 600;",
-                    "Read-only: ITIR_MIXED_CONSUMER_SCOPE is not set. "
-                    "Choose an explicit review scope to enable recording decisions."
+                    "Read-only: set ITIR_MIXED_CONSUMER_SCOPE to the actual Matter ref "
+                    "and SENSIBLAW_MATTER_SCOPE to the existing scope manifest. "
+                    "Both sources must be visible under that MatterContext."
                 }
             } else if candidates.is_empty() {
                 p {"No witnessed relation candidates are available to admit for review."}
