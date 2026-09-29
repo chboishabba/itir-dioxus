@@ -89,16 +89,32 @@ pub fn operational_context_graph(comparison: &MixedSourceComparison) -> GraphIr 
         node(right,"native_source","Source B",0.7,0.5,vec![right.clone()]),
     ];
     let mut edges=vec![];
-    // Operational links are only loaded when workspace scope permits.
-    // Never display a synthetic "nothing occurred" when unavailable or scoped.
+    // Use the *reviewed* producer/source target that SLR actually returned.
+    // These edges denote activity context, not proposition support.
     if matches!(comparison.operational_visibility,ContextVisibility::Available) {
-        for (i,ref_value) in comparison.operational_context_refs.iter().enumerate() {
-            let reference=format!("m10:observer:{ref_value}");
-            let y=0.0-(i as f32 * 0.13);
-            nodes.push(node(&reference,"statibaker_observation",
-                "Operational association",0.0,y,vec![ref_value.clone()]));
-            // Actual owner/target side is deliberately not inferred from the
-            // serialized ref: the read model has not paid that identity.
+        for (i,link) in comparison.operational_links.iter().enumerate() {
+            let reference=format!("m10:observer:{}",link.operational_event_ref);
+            if !nodes.iter().any(|n|n.semantic_ref==reference) {
+                nodes.push(VisualNode {
+                    id:stable_visual_id(&reference),
+                    semantic_ref:reference.clone(),
+                    kind:"statibaker_observation".into(),
+                    label:link.label.clone(),
+                    source_refs:vec![link.source_revision_ref.clone()],
+                    provenance_refs:link.provenance_refs.clone(),
+                    hidden:false,x:0.0,y:0.0-(i as f32*0.13),
+                });
+            }
+            edges.push(VisualEdge {
+                id:stable_visual_id(&format!("m10:operational-link:{}",link.link_ref)),
+                from:stable_visual_id(&reference),
+                to:stable_visual_id(&link.source_revision_ref),
+                semantic_ref:link.link_ref.clone(),
+                kind:format!("operational_association_not_semantic_evidence:{:?}",link.relation_kind),
+                source_refs:vec![link.source_revision_ref.clone()],
+                provenance_refs:vec![link.relationship_receipt_ref.clone()],
+                hidden:false,weight:1.0,
+            });
         }
     }
     GraphIr {
@@ -159,6 +175,7 @@ mod tests {
             semantic_comparison:SemanticComparison::SharedCandidateFingerprint,
             genealogy:GenealogyStatus::NoRecordedLineage,
             native_join_refs:vec![],operational_context_refs:vec![],
+            operational_links:vec![],
             operational_visibility:ContextVisibility::ExcludedByScope,
             semantic_review_pending:true,independent_witnesses_established:None,
             creates_semantic_authority:false,pays_evidence:false,claim_truth_promoted:false,
