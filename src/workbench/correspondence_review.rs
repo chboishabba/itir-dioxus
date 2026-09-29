@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 use sensiblaw_pg_source_store::{
     apply_correspondence_review, load_correspondence_review,
+    load_correspondence_review_history, CorrespondenceReviewActionRecord,
     load_database_config, load_review_item, propose_correspondence_review,
     CorrespondenceAxis, CorrespondenceReviewProposal, ReviewAction,
     ReviewCommand, ReviewItem, ReviewReceipt,
@@ -16,6 +17,7 @@ static COMMAND_COUNTER: AtomicU64 = AtomicU64::new(0);
 pub struct CorrespondenceReviewWorkspace {
     pub relation: CorrespondenceReviewProposal,
     pub item: ReviewItem,
+    pub history: Vec<CorrespondenceReviewActionRecord>,
     pub candidate_only: bool,
     pub creates_semantic_authority: bool,
     pub claim_truth_promoted: bool,
@@ -31,8 +33,10 @@ fn load_pair(config: &sensiblaw_pg_source_store::DatabaseConfig,
         || item.item_kind!=sensiblaw_core::review_workstation::ReviewItemKind::SourceCorrespondence
         || item.creates_semantic_authority || item.claim_truth_promoted
     {return Err("invalid S29 relation review type/authority".into());}
+    let history=load_correspondence_review_history(config,&relation.relation_ref)
+        .map_err(|e|e.to_string())?;
     Ok(CorrespondenceReviewWorkspace {
-        relation,item,candidate_only:true,
+        relation,item,history,candidate_only:true,
         creates_semantic_authority:false,claim_truth_promoted:false,
     })
 }
