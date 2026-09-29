@@ -71,6 +71,25 @@ S29 review write commands remain with the existing review workstation and
 are not synthesized by this reader. No relationship-disposition button is
 wired to a persistence API until the reviewed relation owner exists.
 
+## Physical wgpu receipt (source-written)
+
+The new `m10_mixed_source_gpu_receipt` reuses the repository's existing
+wgpu draw/picking code. Against a real PG pair it prepares **both** graphs,
+submits offscreen render passes, executes `R32Uint` pick passes and GPU
+readback, and checks that a source node selects the exact same domain
+object in shell, PNF GPU lens and operational GPU lens. Its operational
+scope is hardcoded to `ExcludedByScope`, so running a GPU acceptance
+check does not quietly fetch private activity records.
+
+```bash
+cargo run --features "production-data gpu" \
+  --example m10_mixed_source_gpu_receipt -- \
+  'source-revision:...' 'chat-message-revision:...'
+```
+
+This does not claim execution until the receipt actually runs on
+hardware; a committed executable is not a GPU measurement.
+
 ## Acceptance still outstanding
 
 This is an implementation cut, **not runtime certification**. It needs:
