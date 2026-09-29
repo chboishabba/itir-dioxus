@@ -1558,6 +1558,26 @@ fn MixedSourceRelationReviewPanel(
                             oninput:move |e| evidence_request_ref.set(e.value()),
                         }
                     }
+                    details {
+                        style:"margin: .75rem 0;",
+                        summary {"Attributable S29 review receipt history ({current.history.len()})"}
+                        p {
+                            style:"font-size: .85rem; opacity: .7;",
+                            "Receipts are listed by command reference, not claimed wall-clock order."
+                        }
+                        for receipt in current.history.iter() {
+                            article {
+                                key:"{receipt.command_ref}",
+                                style:"border-bottom: 1px solid #555; padding: .45rem;",
+                                p {"Reviewer: {receipt.reviewer_ref} · Action: {receipt.action_ref}"}
+                                p {"Effect: {receipt.effect_ref}"}
+                                if let Some(effect_value)=receipt.effect_value_ref.as_ref() {
+                                    p {style:"overflow-wrap: anywhere;", "Value: {effect_value}"}
+                                }
+                                p {style:"overflow-wrap: anywhere;", "Receipt: {receipt.command_ref}"}
+                            }
+                        }
+                    }
                     div {
                         style:"display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem;",
                         for action in current.item.available_actions.iter().copied() {
