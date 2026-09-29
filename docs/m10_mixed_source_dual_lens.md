@@ -103,3 +103,45 @@ This is an implementation cut, **not runtime certification**. It needs:
 
 Nothing in this branch certifies waveform transcription completeness or
 native speaker identity.
+
+## M10.4 review journey (existing S29, not GPU-owned)
+
+Select source revisions and open their comparison. Candidate widgets for
+same-subject, same-event, quotation or source-dependency review appear
+only when the typed SLR comparator has a corresponding L2 factor or
+registered producer/source backreference. The operator must actively
+choose one: there is **no automatic review admission** for repeated
+literal phrases.
+
+To enable mutating review, explicitly set
+`ITIR_MIXED_CONSUMER_SCOPE` to a workspace-specific scope reference.
+It is **not an authentication token or scope-grant**. The caller must
+also enforce the established S30 MatterContext visibility and
+disclosure rules. S30 now requires *both* native source revisions to be
+included before projecting a correspondence review item, even if its
+review item reference is directly selected.
+
+The chosen proposal is persisted through
+`propose_correspondence_review` and reopened as a typed
+`SourceCorrespondence` S29 item. Standard S29 actions (accept,
+reject, abstain, qualify, supersede and request-evidence) go through
+`apply_correspondence_review`, then the existing
+`apply_persisted_review_command` transactional reducer. The original
+evidence references, two source identities, axis and consumer scope
+remain stable. A selected item displays the persisted status and
+attributable receipt history, not optimistic UI-only status.
+
+An acceptance records a review decision, not proposition truth,
+established quoting, same-source identity, or independent evidence.
+Changing operational observer context does not create a review item or
+set user priority. Navigation/GPU picking uses the same existing
+selection vocabulary and never submits a review command by itself.
+
+### Outstanding acceptance
+
+All new M10.4 code is source-written. No claims of a successful exact
+head Rust build, SQL migration/replay, S30 workspace security audit,
+Dioxus interaction, Agda type-check, or physical GPU receipt are made.
+The S29 ledger presently lacks an authoritative per-receipt timestamp;
+the history UI therefore sorts by command reference without
+pretending to establish chronological order.
