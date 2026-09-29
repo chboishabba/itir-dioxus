@@ -153,6 +153,7 @@ mod tests {
             left_source_revision_ref:"source:transcript:1".into(),
             right_source_revision_ref:"source:chat:1".into(),
             left_statement_refs:vec![],right_statement_refs:vec![],
+            left_source_excerpt:"a".into(),right_source_excerpt:"b".into(),
             shared_entity_candidate_refs:vec!["candidate:paper".into()],
             shared_proposition_candidate_refs:vec![],shared_event_candidate_refs:vec![],
             semantic_comparison:SemanticComparison::SharedCandidateFingerprint,
