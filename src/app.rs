@@ -1361,6 +1361,7 @@ pub fn MixedSourceDualLensView(
                     p {"Semantic relation remains unresolved until reviewed."}
                 }
             }
+            MixedSourceRelationReviewPanel { model: model.clone() }
             section {
                 style:"margin-top: 1rem;",
                 h2 {"Source relationship lenses"}
@@ -1417,6 +1418,184 @@ pub fn MixedSourceDualLensView(
                         }
                         for provenance_ref in inspection.provenance_refs.iter() {
                             p {style:"overflow-wrap: anywhere;", "{provenance_ref}"}
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "production-data")]
+#[component]
+fn MixedSourceRelationReviewPanel(
+    model: crate::workbench::mixed_source::MixedSourceWorkspace,
+) -> Element {
+    use sensiblaw_pg_source_store::{CorrespondenceAxis,ReviewAction};
+    use crate::workbench::correspondence_review::CorrespondenceReviewWorkspace;
+
+    let mut live_review=use_signal(||None::<CorrespondenceReviewWorkspace>);
+    let mut review_result=use_signal(||None::<String>);
+    let mut reviewer_ref=use_signal(||String::new());
+    let mut qualification_ref=use_signal(String::new);
+    let mut evidence_request_ref=use_signal(String::new);
+
+    // The workspace's *viewer* scope is not automatically a permission to
+    // review or disclose. Review admission requires an explicit consumer scope.
+    let consumer_scope=std::env::var("ITIR_MIXED_CONSUMER_SCOPE")
+        .ok().filter(|s|!s.trim().is_empty());
+    let chat_message_ref=std::env::var("ITIR_MIXED_CHAT_MESSAGE_REF").ok();
+
+    let mut candidates=Vec::new();
+    for witness in &model.comparison.shared_entity_candidate_refs {
+        candidates.push((
+            CorrespondenceAxis::SameSubject,witness.clone(),
+            "Explore same-subject relation (PNF entity candidate)".to_owned(),
+        ));
+    }
+    for witness in &model.comparison.shared_event_candidate_refs {
+        candidates.push((
+            CorrespondenceAxis::SameEvent,witness.clone(),
+            "Explore same-event relation (PNF event candidate)".to_owned(),
+        ));
+    }
+    for witness in &model.comparison.native_join_refs {
+        candidates.push((
+            CorrespondenceAxis::Quotation,witness.clone(),
+            "Review possible quotation (native source backreference)".to_owned(),
+        ));
+        candidates.push((
+            CorrespondenceAxis::SourceDependency,witness.clone(),
+            "Review possible source dependency (native source backreference)".to_owned(),
+        ));
+    }
+
+    let snapshot=live_review.read().clone();
+    rsx! {
+        section {
+            style:"margin-top: 1.1rem; padding: 1rem; border: 1px solid #777; border-radius: .65rem;",
+            h2 {"Review a proposed correspondence · S29"}
+            p {
+                "Review is about this proposed relationship, not the truth of either source. "
+                "A candidate must have a stored PNF fingerprint or native source-join witness."
+            }
+            if consumer_scope.is_none() {
+                p {
+                    style:"font-weight: 600;",
+                    "Read-only: ITIR_MIXED_CONSUMER_SCOPE is not set. "
+                    "Choose an explicit review scope to enable recording decisions."
+                }
+            } else if candidates.is_empty() {
+                p {"No witnessed relation candidates are available to admit for review."}
+            } else {
+                div {
+                    style:"display: flex; flex-wrap: wrap; gap: .5rem;",
+                    for (axis,evidence,label) in candidates.iter().cloned() {
+                        {
+                            let left=model.comparison.left_source_revision_ref.clone();
+                            let right=model.comparison.right_source_revision_ref.clone();
+                            let chat_ref=chat_message_ref.clone();
+                            let scope=consumer_scope.clone().unwrap_or_default();
+                            rsx! {
+                                button {
+                                    key:"{axis:?}:{evidence}",
+                                    type:"button",
+                                    style:"padding: .55rem .7rem; border: 1px solid #777; border-radius: .35rem; background: transparent; color: inherit; text-align: left;",
+                                    onclick:move |_| {
+                                        match crate::workbench::correspondence_review::propose_review(
+                                            &left,&right,chat_ref.as_deref(),axis,&evidence,&scope
+                                        ) {
+                                            Ok(reopened)=>{
+                                                review_result.set(Some(
+                                                    format!("Reopened S29 item: {}",reopened.relation.review_item_ref)
+                                                ));
+                                                live_review.set(Some(reopened));
+                                            },
+                                            Err(error)=>review_result.set(Some(format!("Review proposal unavailable: {error}"))),
+                                        }
+                                    },
+                                    "{label}"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if let Some(value)=review_result.read().as_ref() {
+                p {style:"overflow-wrap: anywhere;", "{value}"}
+            }
+            if let Some(current)=snapshot {
+                article {
+                    style:"margin-top: 1rem; border-left: 3px solid #4787c9; padding: .75rem;",
+                    h3 {"Persisted correspondence review item"}
+                    p {style:"overflow-wrap: anywhere;", "{current.relation.relation_ref}"}
+                    p {"Axis: {current.relation.axis:?} · S29 status: {current.item.current_status:?}"}
+                    p {style:"overflow-wrap: anywhere;", "Evidence: {current.relation.evidence_ref}"}
+                    p {style:"overflow-wrap: anywhere;", "Consumer scope: {current.relation.consumer_scope_ref}"}
+                    p {"Correspondence review does not create semantic authority, claim truth or evidentiary independence."}
+                    label {
+                        "Reviewer identity"
+                        input {
+                            style:"display: block; width: min(100%, 28rem); margin-top: .3rem;",
+                            placeholder:"required reviewer ref",
+                            value:reviewer_ref(),
+                            oninput:move |e| reviewer_ref.set(e.value()),
+                        }
+                    }
+                    label {
+                        "Qualification ref (for Qualify)"
+                        input {
+                            style:"display: block; width: min(100%, 28rem); margin-top: .3rem;",
+                            value:qualification_ref(),
+                            oninput:move |e| qualification_ref.set(e.value()),
+                        }
+                    }
+                    label {
+                        "Requested evidence ref (for RequestEvidence)"
+                        input {
+                            style:"display: block; width: min(100%, 28rem); margin-top: .3rem;",
+                            value:evidence_request_ref(),
+                            oninput:move |e| evidence_request_ref.set(e.value()),
+                        }
+                    }
+                    div {
+                        style:"display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem;",
+                        for action in current.item.available_actions.iter().copied() {
+                            if action != ReviewAction::OpenSource && action != ReviewAction::FollowAuthority {
+                                {
+                                    let relation_ref=current.relation.relation_ref.clone();
+                                    rsx! {
+                                        button {
+                                            key:"{action:?}",
+                                            type:"button",
+                                            onclick:move |_| {
+                                                let reviewer=reviewer_ref.read().trim().to_owned();
+                                                let qualification=qualification_ref.read().trim().to_owned();
+                                                let evidence_request=evidence_request_ref.read().trim().to_owned();
+                                                let qualification=(action==ReviewAction::Qualify)
+                                                    .then_some(qualification);
+                                                let evidence_request=(action==ReviewAction::RequestEvidence)
+                                                    .then_some(evidence_request);
+                                                match crate::workbench::correspondence_review::execute_relation_review(
+                                                    &relation_ref,action,&reviewer,qualification,evidence_request,
+                                                ) {
+                                                    Ok((receipt,reopened))=>{
+                                                        review_result.set(Some(format!(
+                                                            "S29 persisted: {} ({:?}); current status {:?}",
+                                                            receipt.command_ref,receipt.action,reopened.item.current_status,
+                                                        )));
+                                                        live_review.set(Some(reopened));
+                                                    },
+                                                    Err(error)=>review_result.set(Some(format!(
+                                                        "S29 action rejected: {error}"
+                                                    ))),
+                                                }
+                                            },
+                                            "{action:?}"
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
