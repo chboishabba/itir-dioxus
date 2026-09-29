@@ -1331,12 +1331,20 @@ pub fn MixedSourceDualLensView(
                     h2 {"Source A"}
                     p {style:"overflow-wrap: anywhere;", "{comparison.left_source_revision_ref}"}
                     p {"Persisted candidate statements: {comparison.left_statement_refs.len()}"}
+                    pre {
+                        style:"white-space: pre-wrap; overflow-wrap: anywhere; border-radius: .35rem; padding: .65rem; background: #222; color: #eee;",
+                        "{comparison.left_source_excerpt}"
+                    }
                 }
                 article {
                     style:"border: 1px solid #777; border-radius: 0.7rem; padding: 1rem;",
                     h2 {"Source B"}
                     p {style:"overflow-wrap: anywhere;", "{comparison.right_source_revision_ref}"}
                     p {"Persisted candidate statements: {comparison.right_statement_refs.len()}"}
+                    pre {
+                        style:"white-space: pre-wrap; overflow-wrap: anywhere; border-radius: .35rem; padding: .65rem; background: #222; color: #eee;",
+                        "{comparison.right_source_excerpt}"
+                    }
                 }
             }
             section {
