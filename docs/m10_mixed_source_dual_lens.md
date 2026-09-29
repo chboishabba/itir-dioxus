@@ -145,3 +145,30 @@ Dioxus interaction, Agda type-check, or physical GPU receipt are made.
 The S29 ledger presently lacks an authoritative per-receipt timestamp;
 the history UI therefore sorts by command reference without
 pretending to establish chronological order.
+
+### Actual Matter authorization for mutating review
+
+The M10.4 write gateway now enforces the existing
+`SENSIBLAW_MATTER_SCOPE` manifest **before both proposal persistence
+and every S29 status mutation**. It uses the repository-native
+`load_matter_scope_manifest` +
+`project_matter_context` machinery. The configured
+`ITIR_MIXED_CONSUMER_SCOPE` must equal the manifest's `matter_ref`;
+both native source revisions must appear among that MatterContext's
+included refs, after sealed/role/purpose/knowledge-cut/minimum-necessary
+filtering. Failure is read-only. This is materially stronger than
+trusting an arbitrary scope string. It does not replace authenticated
+DB access or a higher-level permission service.
+
+```bash
+SENSIBLAW_MATTER_SCOPE=/path/to/sensiblaw.matter-scope.json \
+ITIR_MIXED_CONSUMER_SCOPE='matter:your-matter' \
+ITIR_MIXED_LEFT_REV='source-revision:...' \
+ITIR_MIXED_RIGHT_REV='chat-message-revision:...' \
+  cargo run --features desktop
+```
+
+After a Matter visibility change the action gateway re-evaluates the
+manifest on each write, rather than trusting the review item's earlier
+visibility. The canonical S30 Matter workspace also refuses to project
+a correspondence item unless both source endpoints are included.
