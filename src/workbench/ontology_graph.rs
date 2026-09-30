@@ -34,12 +34,12 @@ pub fn ontology_diagnostic_graph(d:&OntologyDiagnosticRead)->GraphIr {
     let mut nodes=vec![
         node(source,"canonical_source","Pinned Wikidata source",
             -0.65,0.3,vec![source.clone()],vec![p.source_snapshot_digest_ref.clone()]),
-        node(&checker,"executed_finite_checker","Finite Lean checker",
+        node(&checker,"producer_reported_finite_checker","Producer-reported Lean checker",
             0.0,0.3,vec![source.clone()],
             vec![p.producer_receipt_ref.clone(),p.lean_source_commit.clone()]),
     ];
     let mut edges=vec![edge(&format!("wiki1:checked:{}",d.diagnostic_ref),
-        source,&checker,"source_snapshot_checked_in_declared_graph_view",source)];
+        source,&checker,"source_snapshot_supplied_to_declared_graph_view",source)];
     for (index,w) in p.witnesses.iter().enumerate() {
         let reference=format!("wiki1:witness:{}:{}",d.diagnostic_ref,w.witness_ref);
         nodes.push(node(&reference,"finite_diagnostic_witness",
