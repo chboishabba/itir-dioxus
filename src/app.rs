@@ -1920,6 +1920,8 @@ fn RelationalComparisonView(
             h1 {"Source-grounded relational comparison"}
             p {"Consumer: {cmp.consumer_ref}"}
             p {"Candidate: {cmp.finding:?} · No source merge, truth payment, or independence claim"}
+            p {style:"overflow-wrap:anywhere;", "Left canonical source SHA-256: {pair.left_source_content_sha256}"}
+            p {style:"overflow-wrap:anywhere;", "Right canonical source SHA-256: {pair.right_source_content_sha256}"}
             div {
                 style:"display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:.8rem;",
                 article {
