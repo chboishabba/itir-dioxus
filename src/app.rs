@@ -1691,9 +1691,9 @@ fn WikiOntologyDiagnosticView(
                 p {style:"overflow-wrap:anywhere;", "Lean owner: {p.lean_owner_ref}"}
                 p {style:"overflow-wrap:anywhere;", "Lean source commit: {p.lean_source_commit}"}
                 p {style:"overflow-wrap:anywhere;", "Producer run: {p.producer_run_ref}"}
-                p {style:"overflow-wrap:anywhere;", "Execution receipt: {p.producer_receipt_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Producer-declared execution receipt: {p.producer_receipt_ref}"}
                 p {style:"overflow-wrap:anywhere;", "Output digest: {p.producer_output_digest_ref}"}
-                p {"Lean kernel check: {p.lean_kernel_checked} · Original author: {p.original_author_ref}"}
+                p {"Producer-reported Lean kernel check: {p.lean_kernel_checked} · Original author: {p.original_author_ref}"}
                 p {style:"overflow-wrap:anywhere;", "DASHI integration: {p.integration_ref}"}
                 p {"Reviewer scope: {data.consumer_scope_ref}"}
             }
