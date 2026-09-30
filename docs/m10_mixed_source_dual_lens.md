@@ -215,3 +215,44 @@ This graph reuses `stable_visual_id`, source/provenance reopening,
 shell/wgpu command vocabulary. The Dioxus reader exposes those objects
 in the inspector. Actual physical wgpu draw/pick/readback against
 this new ontology graph is a separate, unexecuted acceptance gate.
+
+## ITIR general relational interlingua (M10 consumer fibre)
+
+The `ITIR_RELATIONAL_COMPARISON_REF` entrypoint opens a persisted,
+typed `DurableRelationalComparison` from SLR. This is an additional
+read path over existing canonical sources, **not** a new ontology or
+independent persistent world.
+
+`workbench::relational` enforces the existing Matter scope:
+`SENSIBLAW_MATTER_SCOPE` must be present, its `matter_ref` must equal
+the requested comparison consumer ref, and **both** original source
+revisions must be included after the canonical context cut. It then
+uses the ordinary `GraphIr` node/edge vocabulary to show (1) distinct
+source records, (2) the consumer-specific comparison, and (3) residual
+obligations. The Dioxus inspector displays the source's candidate
+predicate, role bindings, witnessed role-type hypotheses, native
+statement metadata, positive/counter-support, unknown evidence,
+alignment licences and unresolved dimensions.
+
+Crucially, a matched string, QID, entity fingerprint or similar
+member set is **not** a shared source, admitted claim or globally
+licenced type identity. Licensed role/filler/predicate/type mappings
+are reviewed for one consumer operation and do not generalize to
+other operations. Comparison flags retain
+`creates_semantic_authority=false`,
+`claim_truth_promoted=false`,
+`merges_sources=false`, and
+`proves_independence=false`.
+
+Graph selection uses existing
+`VisualObjectId`, `decode_shell`, `decode_gpu` and S29/S30
+navigation. There is no UI-written semantic equality, no source
+merge, and no automatic repair decision.
+
+This route is source-written. The underlying typed comparison is
+currently a two-source operation with no empirical multilingual,
+biomedical or animal-communication semantic-equivalence receipt.
+SCALE-2F, kernel checks, PG replay and physical wgpu acceptance remain
+separate verification gates. The generic computation and implementation
+limits are documented at
+`slr/docs/itir_relational_interlingua.md`.
