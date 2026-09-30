@@ -13,6 +13,29 @@ use crate::workbench::{
 };
 
 pub fn app() -> Element {
+    // WIKI-UI-1 is an *explicit* diagnostic selector, not a crawl or
+    // unattended Wikidata editing interface.
+    #[cfg(feature="production-data")]
+    if let Ok(reference)=std::env::var("ITIR_WIKI_DIAGNOSTIC_REF") {
+        return match crate::workbench::ontology::load_ontology_case(&reference) {
+            Ok(diagnostic)=>rsx! {
+                document::Title { "ITIR Wikidata Ontology Diagnostics" }
+                main {
+                    style:"font-family:sans-serif;max-width:1200px;margin:0 auto;padding:1.5rem;",
+                    WikiOntologyDiagnosticView { diagnostic }
+                }
+            },
+            Err(error)=>rsx! {
+                document::Title { "Ontology diagnostic unavailable" }
+                main {
+                    style:"font-family:sans-serif;padding:1.5rem;",
+                    h1 {"Ontology diagnostic unavailable"}
+                    p {"{error}"}
+                    p {"No source, witness or proposed edit is exposed without its current MatterContext scope."}
+                }
+            },
+        }
+    }
     // Explicit pair selector: the UI never scans and auto-merges identical
     // phrases across chat/transcripts. Scope controls observer visibility.
     #[cfg(feature = "production-data")]
@@ -1620,6 +1643,168 @@ fn MixedSourceRelationReviewPanel(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature="production-data")]
+#[component]
+fn WikiOntologyDiagnosticView(
+    diagnostic:sensiblaw_pg_source_store::OntologyDiagnosticRead,
+)->Element {
+    use sensiblaw_pg_source_store::ReviewAction;
+    let mut current=use_signal(||diagnostic);
+    let mut reviewer_ref=use_signal(String::new);
+    let mut qualification_ref=use_signal(String::new);
+    let mut evidence_request_ref=use_signal(String::new);
+    let mut feedback=use_signal(||None::<String>);
+    let data=current.read().clone();
+    let p=&data.packet;
+    let view=format!("{:?}",p.graph_view);
+    let checker=format!("{:?}",p.checker_kind);
+    let disposition=format!("{:?}",p.disposition);
+    let status=format!("{:?}",data.s29_status);
+    rsx! {
+        article {
+            header {
+                h1 {"Wikidata ontology · finite diagnostic"}
+                p {"Graph view: {view} · Checker: {checker} · Outcome: {disposition}"}
+                p {
+                    style:"opacity:.8;",
+                    "Candidate-only. A modeled checker verdict is not a community edit, claim truth or global Wikidata consistency proof."
+                }
+            }
+            section {
+                style:"padding:.8rem;border:1px solid #888;border-radius:.5rem;",
+                h2 {"Source and execution receipts"}
+                p {style:"overflow-wrap:anywhere;", "Native source revision: {p.source_revision_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Snapshot digest: {p.source_snapshot_digest_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Wikidata entity: {p.wikidata_entity_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Graph slice: {p.graph_slice_ref:?}"}
+                p {style:"overflow-wrap:anywhere;", "Lean owner: {p.lean_owner_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Lean source commit: {p.lean_source_commit}"}
+                p {style:"overflow-wrap:anywhere;", "Producer run: {p.producer_run_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Execution receipt: {p.producer_receipt_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Output digest: {p.producer_output_digest_ref}"}
+                p {"Lean kernel check: {p.lean_kernel_checked} · Original author: {p.original_author_ref}"}
+                p {style:"overflow-wrap:anywhere;", "DASHI integration: {p.integration_ref}"}
+                p {"Reviewer scope: {data.consumer_scope_ref}"}
+            }
+            section {
+                style:"margin-top:1rem;",
+                h2 {"Rule witnesses · {p.witnesses.len()}"}
+                for witness in p.witnesses.iter() {
+                    article {
+                        key:"{witness.witness_ref}",
+                        style:"padding:.8rem;margin-top:.5rem;border:1px solid #888;border-radius:.5rem;",
+                        strong {"{witness.rule_ref}"}
+                        p {"{witness.explanation}"}
+                        p {style:"overflow-wrap:anywhere;", "Witness: {witness.witness_ref}"}
+                        h4 {"Exact source statements"}
+                        for reference in witness.statement_refs.iter() {
+                            p {style:"overflow-wrap:anywhere;", "{reference}"}
+                        }
+                        h4 {"Additional evidence refs"}
+                        for evidence in witness.evidence_refs.iter() {
+                            p {style:"overflow-wrap:anywhere;", "{evidence}"}
+                        }
+                    }
+                }
+                if p.witnesses.is_empty() {
+                    p {"No source-backed violation witness in this finite output; this does not certify the world."}
+                }
+            }
+            section {
+                h2 {"Unpaid obligations · {p.missing_obligations.len()}"}
+                for missing in p.missing_obligations.iter() {
+                    p {"{missing}"}
+                }
+            }
+            section {
+                h2 {"Advisory repair candidates · {p.repair_candidates.len()}"}
+                for candidate in p.repair_candidates.iter() {
+                    article {
+                        key:"{candidate.candidate_ref}",
+                        style:"margin-top:.5rem;padding:.8rem;border:1px solid #888;border-radius:.5rem;",
+                        h3 {"{candidate.candidate_ref}"}
+                        p {"{candidate.proposed_edit_description}"}
+                        p {"{candidate.rationale}"}
+                        p {"Modeled verdict: {candidate.modeled_verdict_ref}"}
+                        p {style:"overflow-wrap:anywhere;", "Before: {candidate.modeled_before_ref}"}
+                        p {style:"overflow-wrap:anywhere;", "After: {candidate.modeled_after_ref}"}
+                        p {"Wikidata modification: false · Public edit authority: false"}
+                    }
+                }
+            }
+            section {
+                style:"margin-top:1rem;padding:1rem;border:1px solid #888;border-radius:.5rem;",
+                h2 {"S29 review · {status}"}
+                p {"Review concerns the finite diagnostic; accepting it does not authorize a repair or public edit."}
+                label {
+                    "Reviewer identity"
+                    input {
+                        value:reviewer_ref(),
+                        oninput:move |event|reviewer_ref.set(event.value()),
+                    }
+                }
+                label {
+                    "Qualification reference"
+                    input {
+                        value:qualification_ref(),
+                        oninput:move |event|qualification_ref.set(event.value()),
+                    }
+                }
+                label {
+                    "Evidence request reference"
+                    input {
+                        value:evidence_request_ref(),
+                        oninput:move |event|evidence_request_ref.set(event.value()),
+                    }
+                }
+                div {
+                    style:"display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem;",
+                    for action in [
+                        ReviewAction::Accept,ReviewAction::Reject,
+                        ReviewAction::Abstain,ReviewAction::Qualify,
+                        ReviewAction::RequestEvidence,ReviewAction::Supersede,
+                    ] {
+                        {
+                            let diagnostic_ref=data.diagnostic_ref.clone();
+                            rsx! {
+                                button {
+                                    key:"{action:?}",
+                                    type:"button",
+                                    onclick:move |_| {
+                                        let reviewer=reviewer_ref.read().trim().to_owned();
+                                        let qual=qualification_ref.read().trim().to_owned();
+                                        let request=evidence_request_ref.read().trim().to_owned();
+                                        match crate::workbench::ontology::review_ontology_case(
+                                            &diagnostic_ref,action,&reviewer,
+                                            (action==ReviewAction::Qualify).then_some(qual),
+                                            (action==ReviewAction::RequestEvidence).then_some(request),
+                                        ) {
+                                            Ok((receipt,reopened))=>{
+                                                feedback.set(Some(format!(
+                                                    "Persisted S29 receipt {} for {:?}",
+                                                    receipt.command_ref,receipt.action,
+                                                )));
+                                                current.set(reopened);
+                                            },
+                                            Err(error)=>feedback.set(Some(format!(
+                                                "S29 action rejected: {error}"
+                                            ))),
+                                        }
+                                    },
+                                    "{action:?}"
+                                }
+                            }
+                        }
+                    }
+                }
+                if let Some(message)=feedback.read().as_ref() {
+                    p {style:"overflow-wrap:anywhere;", "{message}"}
                 }
             }
         }
