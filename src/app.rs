@@ -13,6 +13,26 @@ use crate::workbench::{
 };
 
 pub fn app() -> Element {
+    #[cfg(feature="production-data")]
+    if let Ok(reference)=std::env::var("ITIR_RELATIONAL_COMPARISON_REF") {
+        return match crate::workbench::relational::open_relational_pair(&reference) {
+            Ok(model)=>rsx! {
+                document::Title {"ITIR Relational Comparison"}
+                main {
+                    style:"font-family:sans-serif;max-width:1200px;margin:0 auto;padding:1.5rem;",
+                    RelationalComparisonView { model }
+                }
+            },
+            Err(error)=>rsx! {
+                document::Title {"ITIR relational comparison unavailable"}
+                main {
+                    h1 {"Relational comparison unavailable"}
+                    p {"{error}"}
+                    p {"No source or relationship is revealed outside the current MatterContext."}
+                }
+            }
+        };
+    }
     // WIKI-UI-1 is an *explicit* diagnostic selector, not a crawl or
     // unattended Wikidata editing interface.
     #[cfg(feature="production-data")]
@@ -1877,6 +1897,106 @@ fn WikiOntologyDiagnosticView(
                 }
                 if let Some(message)=feedback.read().as_ref() {
                     p {style:"overflow-wrap:anywhere;", "{message}"}
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature="production-data")]
+#[component]
+fn RelationalComparisonView(
+    model:crate::workbench::relational::RelationalWorkspace,
+)->Element{
+    use crate::visual::command::{DomainCommand,ShellInput,VisualObjectId,decode_shell};
+    let mut selected=use_signal(||None::<VisualObjectId>);
+    let pair=&model.packet;
+    let cmp=&pair.comparison;
+    let graph=&model.graph;
+    let inspected=selected().and_then(|id|
+        crate::workbench::relational::inspect(&model,id));
+    rsx! {
+        section {
+            h1 {"Source-grounded relational comparison"}
+            p {"Consumer: {cmp.consumer_ref}"}
+            p {"Candidate: {cmp.finding:?} · No source merge, truth payment, or independence claim"}
+            div {
+                style:"display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:.8rem;",
+                article {
+                    style:"border:1px solid #777;border-radius:.5rem;padding:1rem;",
+                    h2 {"Left original"}
+                    p {style:"overflow-wrap:anywhere;", "Source revision: {pair.left.source_revision_ref}"}
+                    p {style:"overflow-wrap:anywhere;", "PNF observation: {pair.left.observation_ref}"}
+                    p {"Family: {pair.left.source_family:?}"}
+                    p {style:"overflow-wrap:anywhere;", "Predicate candidate: {pair.left.predicate_candidate_ref}"}
+                    for role in pair.left.role_bindings.iter() {
+                        p {style:"overflow-wrap:anywhere;",
+                           "{role.role_ref}[{role.occurrence}] → {role.filler_candidate_ref}"}
+                    }
+                }
+                article {
+                    style:"border:1px solid #777;border-radius:.5rem;padding:1rem;",
+                    h2 {"Right original"}
+                    p {style:"overflow-wrap:anywhere;", "Source revision: {pair.right.source_revision_ref}"}
+                    p {style:"overflow-wrap:anywhere;", "PNF observation: {pair.right.observation_ref}"}
+                    p {"Family: {pair.right.source_family:?}"}
+                    p {style:"overflow-wrap:anywhere;", "Predicate candidate: {pair.right.predicate_candidate_ref}"}
+                    for role in pair.right.role_bindings.iter() {
+                        p {style:"overflow-wrap:anywhere;",
+                           "{role.role_ref}[{role.occurrence}] → {role.filler_candidate_ref}"}
+                    }
+                }
+            }
+            section {
+                style:"margin-top:1rem;border:1px solid #777;border-radius:.5rem;padding:1rem;",
+                h2 {"Context-indexed residuals · {cmp.residuals.len()}"}
+                for (index,residual) in cmp.residuals.iter().enumerate() {
+                    article {
+                        key:"{index}",
+                        p {"{residual.kind:?}"}
+                        p {style:"overflow-wrap:anywhere;", "Left: {residual.left_ref:?}"}
+                        p {style:"overflow-wrap:anywhere;", "Right: {residual.right_ref:?}"}
+                        p {style:"overflow-wrap:anywhere;", "Unpaid obligation: {residual.obligation_ref}"}
+                    }
+                }
+                h3 {"Preserved report polarity"}
+                p {"Supporting reports: {cmp.positive_support_refs.len()}"}
+                p {"Counter-supporting reports: {cmp.counter_support_refs.len()}"}
+                p {"Explicit unknown reports: {cmp.explicit_unknown_refs.len()}"}
+                h3 {"Licensed transport witnesses"}
+                for witness in cmp.used_alignment_witness_refs.iter() {
+                    p {style:"overflow-wrap:anywhere;", "{witness}"}
+                }
+            }
+            section {
+                h2 {"Graph and source inspector"}
+                p {"The graph is a visualization of the typed comparison, not an independent semantics engine."}
+                for vertex in graph.nodes.iter() {
+                    {
+                        let id=vertex.id;
+                        rsx! {
+                            button {
+                                key:"{vertex.semantic_ref}",
+                                type:"button",
+                                onclick:move |_| {
+                                    if let DomainCommand::SelectObject(value)=
+                                        decode_shell(ShellInput::Select(id)) {
+                                        selected.set(Some(value));
+                                    }
+                                },
+                                "{vertex.label}"
+                            }
+                        }
+                    }
+                }
+                if let Some(detail)=inspected {
+                    article {
+                        h3 {"Selected comparison object"}
+                        p {style:"overflow-wrap:anywhere;", "{detail.semantic_ref}"}
+                        for reference in detail.source_refs.iter() {
+                            p {style:"overflow-wrap:anywhere;", "Source: {reference}"}
+                        }
+                    }
                 }
             }
         }
