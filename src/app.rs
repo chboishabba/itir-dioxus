@@ -1804,8 +1804,8 @@ fn WikiOntologyDiagnosticView(
                         p {"{candidate.proposed_edit_description}"}
                         p {"{candidate.rationale}"}
                         p {"Modeled verdict: {candidate.modeled_verdict_ref}"}
-                        p {style:"overflow-wrap:anywhere;", "Before: {candidate.modeled_before_ref}"}
-                        p {style:"overflow-wrap:anywhere;", "After: {candidate.modeled_after_ref}"}
+                        p {style:"overflow-wrap:anywhere;", "Modeled before-score: {candidate.modeled_before_ref}"}
+                        p {style:"overflow-wrap:anywhere;", "Modeled hypothetical after-score (not observed): {candidate.modeled_after_ref}"}
                         p {"Wikidata modification: false · Public edit authority: false"}
                     }
                 }
