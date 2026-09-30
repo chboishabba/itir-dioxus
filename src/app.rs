@@ -1933,6 +1933,13 @@ fn RelationalComparisonView(
                         p {style:"overflow-wrap:anywhere;",
                            "{role.role_ref}[{role.occurrence}] → {role.filler_candidate_ref}"}
                     }
+                    for hint in pair.left.role_type_hypotheses.iter() {
+                        p {style:"overflow-wrap:anywhere;",
+                           "Candidate type for {hint.role_ref}[{hint.occurrence}]: {hint.candidate_type_ref} · Witness {hint.witness_ref}"}
+                    }
+                    for ref_id in pair.left.native_metadata_refs.iter() {
+                        p {style:"overflow-wrap:anywhere;", "Native metadata: {ref_id}"}
+                    }
                 }
                 article {
                     style:"border:1px solid #777;border-radius:.5rem;padding:1rem;",
@@ -1944,6 +1951,13 @@ fn RelationalComparisonView(
                     for role in pair.right.role_bindings.iter() {
                         p {style:"overflow-wrap:anywhere;",
                            "{role.role_ref}[{role.occurrence}] → {role.filler_candidate_ref}"}
+                    }
+                    for hint in pair.right.role_type_hypotheses.iter() {
+                        p {style:"overflow-wrap:anywhere;",
+                           "Candidate type for {hint.role_ref}[{hint.occurrence}]: {hint.candidate_type_ref} · Witness {hint.witness_ref}"}
+                    }
+                    for ref_id in pair.right.native_metadata_refs.iter() {
+                        p {style:"overflow-wrap:anywhere;", "Native metadata: {ref_id}"}
                     }
                 }
             }
@@ -1963,6 +1977,10 @@ fn RelationalComparisonView(
                 p {"Supporting reports: {cmp.positive_support_refs.len()}"}
                 p {"Counter-supporting reports: {cmp.counter_support_refs.len()}"}
                 p {"Explicit unknown reports: {cmp.explicit_unknown_refs.len()}"}
+                h3 {"Role/type support receipts"}
+                for evidence in cmp.role_type_evidence_refs.iter() {
+                    p {style:"overflow-wrap:anywhere;", "{evidence}"}
+                }
                 h3 {"Licensed transport witnesses"}
                 for witness in cmp.used_alignment_witness_refs.iter() {
                     p {style:"overflow-wrap:anywhere;", "{witness}"}
