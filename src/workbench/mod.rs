@@ -29,6 +29,8 @@ pub mod ontology;
 #[cfg(feature = "production-data")]
 pub mod ontology_graph;
 #[cfg(feature = "production-data")]
+pub mod relational;
+#[cfg(feature = "production-data")]
 pub mod event_discovery;
 pub mod persisted_comparative;
 pub mod comparative;
