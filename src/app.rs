@@ -1706,6 +1706,29 @@ fn WikiOntologyDiagnosticView(
                         for reference in witness.statement_refs.iter() {
                             p {style:"overflow-wrap:anywhere;", "{reference}"}
                         }
+                        if !witness.native_statements.is_empty() {
+                            details {
+                                summary {"Producer-native statement bundles (qualifiers, ranks, references)"}
+                                for statement in witness.native_statements.iter() {
+                                    article {
+                                        key:"{statement.statement_ref}",
+                                        style:"padding:.65rem;border:1px solid #777;border-radius:.4rem;",
+                                        p {style:"overflow-wrap:anywhere;", "GUID: {statement.statement_ref}"}
+                                        p {style:"overflow-wrap:anywhere;", "Subject: {statement.subject_ref}"}
+                                        p {style:"overflow-wrap:anywhere;", "Property: {statement.property_ref}"}
+                                        p {style:"overflow-wrap:anywhere;", "Value: {statement.value_ref}"}
+                                        p {"Rank: {statement.rank_ref}"}
+                                        p {style:"overflow-wrap:anywhere;", "Statement revision: {statement.statement_revision_ref}"}
+                                        for qualifier in statement.qualifiers.iter() {
+                                            p {style:"overflow-wrap:anywhere;", "Qualifier {qualifier.property_ref}: {qualifier.value_ref}"}
+                                        }
+                                        for native_reference in statement.reference_refs.iter() {
+                                            p {style:"overflow-wrap:anywhere;", "Reference: {native_reference}"}
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         h4 {"Additional evidence refs"}
                         for evidence in witness.evidence_refs.iter() {
                             p {style:"overflow-wrap:anywhere;", "{evidence}"}
