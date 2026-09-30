@@ -1655,12 +1655,17 @@ fn WikiOntologyDiagnosticView(
     diagnostic:sensiblaw_pg_source_store::OntologyDiagnosticRead,
 )->Element {
     use sensiblaw_pg_source_store::ReviewAction;
+    use crate::visual::command::{DomainCommand,ShellInput,VisualObjectId,decode_shell};
+    let mut selected_graph_object=use_signal(||None::<VisualObjectId>);
     let mut current=use_signal(||diagnostic);
     let mut reviewer_ref=use_signal(String::new);
     let mut qualification_ref=use_signal(String::new);
     let mut evidence_request_ref=use_signal(String::new);
     let mut feedback=use_signal(||None::<String>);
     let data=current.read().clone();
+    let graph=crate::workbench::ontology_graph::ontology_diagnostic_graph(&data);
+    let inspected=selected_graph_object().and_then(|id|
+        crate::workbench::ontology_graph::inspect_ontology_graph(&graph,id));
     let p=&data.packet;
     let view=format!("{:?}",p.graph_view);
     let checker=format!("{:?}",p.checker_kind);
@@ -1691,6 +1696,50 @@ fn WikiOntologyDiagnosticView(
                 p {"Lean kernel check: {p.lean_kernel_checked} · Original author: {p.original_author_ref}"}
                 p {style:"overflow-wrap:anywhere;", "DASHI integration: {p.integration_ref}"}
                 p {"Reviewer scope: {data.consumer_scope_ref}"}
+            }
+            section {
+                style:"margin-top:1rem;padding:.8rem;border:1px solid #888;border-radius:.5rem;",
+                h2 {"Checker/source/witness graph"}
+                p {
+                    "Typed relationships are producer-reported review objects, not admitted semantic relations. "
+                    "Dioxus and wgpu use the same GraphIr/DomainCommand IDs."
+                }
+                div {
+                    style:"display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.5rem;",
+                    for vertex in graph.nodes.iter() {
+                        {
+                            let id=vertex.id;
+                            rsx! {
+                                button {
+                                    key:"{vertex.semantic_ref}",
+                                    type:"button",
+                                    style:"text-align:left;padding:.7rem;border:1px solid #777;border-radius:.4rem;",
+                                    onclick:move |_| {
+                                        if let DomainCommand::SelectObject(selected)=
+                                            decode_shell(ShellInput::Select(id)) {
+                                            selected_graph_object.set(Some(selected));
+                                        }
+                                    },
+                                    strong {"{vertex.label}"}
+                                    p {style:"overflow-wrap:anywhere;font-size:.8rem;", "{vertex.kind}"}
+                                }
+                            }
+                        }
+                    }
+                }
+                if let Some(selection)=inspected {
+                    article {
+                        style:"margin-top:.7rem;border-left:4px solid #4787c9;padding:.6rem;",
+                        h3 {"Selected graph object"}
+                        p {style:"overflow-wrap:anywhere;", "{selection.semantic_ref}"}
+                        for source in selection.source_refs.iter() {
+                            p {style:"overflow-wrap:anywhere;", "Source: {source}"}
+                        }
+                        for provenance in selection.provenance_refs.iter() {
+                            p {style:"overflow-wrap:anywhere;", "Provenance: {provenance}"}
+                        }
+                    }
+                }
             }
             section {
                 style:"margin-top:1rem;",
