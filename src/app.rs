@@ -33,6 +33,28 @@ pub fn app() -> Element {
             }
         };
     }
+    #[cfg(feature="production-data")]
+    if let Ok(reference)=std::env::var("ITIR_INV_ACQUISITION_REF") {
+        return match crate::workbench::investigation::load_investigation_queue(&reference) {
+            Ok(model)=>rsx! {
+                document::Title {"ITIR Investigation Acquisition"}
+                main {
+                    style:"font-family:sans-serif;max-width:1200px;margin:0 auto;padding:1.5rem;",
+                    InvestigationAcquisitionView { model }
+                }
+            },
+            Err(error)=>rsx! {
+                document::Title {"ITIR investigation acquisition unavailable"}
+                main {
+                    style:"font-family:sans-serif;max-width:1000px;margin:0 auto;padding:2rem;",
+                    h1 {"Investigation acquisition unavailable"}
+                    p {"{error}"}
+                    p {"No missing source is fabricated and no blocked route is treated as executable."}
+                }
+            }
+        };
+    }
+
     // WIKI-UI-1 is an *explicit* diagnostic selector, not a crawl or
     // unattended Wikidata editing interface.
     #[cfg(feature="production-data")]
@@ -2018,6 +2040,101 @@ fn RelationalComparisonView(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+#[cfg(feature="production-data")]
+#[component]
+fn InvestigationAcquisitionView(
+    model:crate::workbench::investigation::InvestigationQueueWorkspace,
+)->Element{
+    let queue=&model.queue;
+    let frontier=queue.priority.frontier_route_refs.iter()
+        .collect::<std::collections::BTreeSet<_>>();
+    let executable=queue.priority.executable_frontier_route_refs.iter()
+        .collect::<std::collections::BTreeSet<_>>();
+    rsx! {
+        article {
+            h1 {"Proof-directed investigation acquisition"}
+            p {
+                style:"font-weight:600;",
+                "Residual → acquisition obligation → non-scalar Pareto frontier"
+            }
+            p {
+                "This surface prioritises lawful follow-up work. It does not obtain evidence, "
+                "change source truth, admit a claim, or grant access authority."
+            }
+            section {
+                style:"border:1px solid #777;border-radius:.5rem;padding:1rem;",
+                h2 {"Unpaid evidentiary coordinate"}
+                p {style:"overflow-wrap:anywhere;", "Obligation: {queue.obligation.obligation_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Parent comparison: {queue.obligation.comparison_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Residual: {queue.obligation.residual_obligation_ref}"}
+                p {"Target: {queue.obligation.target_description}"}
+                p {style:"overflow-wrap:anywhere;",
+                    "Access constraint: {queue.obligation.authority_or_access_constraint_ref}"}
+                p {"Availability: {queue.obligation.current_availability:?}"}
+                for source in queue.obligation.source_revision_refs.iter() {
+                    p {style:"overflow-wrap:anywhere;", "Source context: {source}"}
+                }
+            }
+            section {
+                style:"margin-top:1rem;",
+                h2 {"Acquisition routes · Pareto, not scalar score"}
+                p {
+                    "Axes: discrimination gain · dependency impact · residual coverage · "
+                    "provenance novelty · lawful/reviewer/resource cost."
+                }
+                for route in queue.routes.iter() {
+                    {
+                        let on_frontier=frontier.contains(&route.route_ref);
+                        let can_execute=executable.contains(&route.route_ref);
+                        rsx! {
+                            article {
+                                key:"{route.route_ref}",
+                                style:"border:1px solid #777;border-radius:.5rem;padding:.9rem;margin:.6rem 0;",
+                                h3 {"{route.route_ref}"}
+                                p {"{route.route_description}"}
+                                p {style:"overflow-wrap:anywhere;", "Locator: {route.source_locator_ref}"}
+                                p {"Access: {route.access_disposition:?} · executable now: {can_execute}"}
+                                p {"Frontier member: {on_frontier}"}
+                                p {style:"overflow-wrap:anywhere;", "Genealogy: {route.provenance_genealogy_ref}"}
+                                p {"Independence: {route.independence:?} · duplicate relation: {route.duplicate_relation:?}"}
+                                ul {
+                                    li {"information/discrimination gain: {route.information_gain}"}
+                                    li {"dependency-closure impact: {route.dependency_closure_impact}"}
+                                    li {"unpaid residual coverage: {route.residual_coverage}"}
+                                    li {"provenance novelty: {route.provenance_novelty}"}
+                                    li {"lawful/reviewer/resource cost: {route.acquisition_cost}"}
+                                }
+                                p {style:"overflow-wrap:anywhere;",
+                                    "Axis estimate receipt: {route.axis_estimation_receipt_ref}"}
+                            }
+                        }
+                    }
+                }
+                if queue.priority.blocked_frontier_route_refs.len()>0 {
+                    h3 {"Frontier routes blocked by current access state"}
+                    for blocked in queue.priority.blocked_frontier_route_refs.iter() {
+                        p {style:"overflow-wrap:anywhere;", "{blocked}"}
+                    }
+                }
+            }
+            section {
+                h2 {"Selective reopening targets"}
+                for target in queue.obligation.dependency_target_refs.iter() {
+                    p {style:"overflow-wrap:anywhere;", "{target}"}
+                }
+                p {
+                    "Only explicit dependency paths may reopen downstream assessments after "
+                    "a genuinely acquired source is persisted."
+                }
+            }
+            footer {
+                p {"Matter: {model.matter_ref}"}
+                p {"Scalar priority score used: false · acquisition executed: false · semantic authority: false"}
             }
         }
     }
