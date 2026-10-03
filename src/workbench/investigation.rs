@@ -14,12 +14,10 @@ pub use graph::*;
 
 use std::collections::BTreeSet;
 
-use postgres::{Client, NoTls};
 use sensiblaw_pg_source_store::{
-    load_acquisition_queue, load_database_config,
-    load_investigation_graph_binding_for_obligation, load_inv_governance_packet,
-    load_persisted_workbench_projection, AcquisitionGovernancePacket,
-    DurableAcquisitionQueue, InvestigationGraphBinding,
+    load_acquisition_queue, load_bound_investigation_graph_projection,
+    load_database_config, load_inv_governance_packet,
+    AcquisitionGovernancePacket, DurableAcquisitionQueue, InvestigationGraphBinding,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -96,35 +94,21 @@ fn load_bound_graph(
     queue:&DurableAcquisitionQueue,
     authorization:&MatterAuthorization,
 )->Result<Option<InvestigationGraphProjection>,String>{
-    let Some(binding)=load_investigation_graph_binding_for_obligation(
-        config,&queue.obligation.obligation_ref,
+    let Some(bound)=load_bound_investigation_graph_projection(
+        config,&queue.obligation.obligation_ref,&authorization.matter_ref,
     ).map_err(|e|e.to_string())? else {
         return Ok(None);
     };
-    if binding.matter_ref!=authorization.matter_ref {
-        return Err("persisted investigation graph binding belongs to a different Matter".into());
+    let binding=bound.binding;
+    let persisted=bound.projection;
+    if persisted.source_refs.iter().any(|source|
+        !authorization.included_refs.contains(source)) {
+        return Err("one or more graph source refs are excluded by MatterContext".into());
     }
     if !binding.derived_only||!binding.challengeable||binding.creates_graph_edges
         ||binding.creates_semantic_authority||binding.creates_access_authority
         ||binding.creates_acquisition_state {
         return Err("persisted investigation graph binding crossed its projection firewall".into());
-    }
-
-    let mut client=Client::connect(config.database_url(),NoTls)
-        .map_err(|e|e.to_string())?;
-    let persisted=load_persisted_workbench_projection(
-        &mut client,&binding.projection_ref,&authorization.matter_ref,
-    ).map_err(|e|e.to_string())?;
-    if persisted.source_refs.iter().any(|source|
-        !authorization.included_refs.contains(source)) {
-        return Err("one or more graph source refs are excluded by MatterContext".into());
-    }
-    if !persisted.legal_follow_graph.derived_only
-        ||!persisted.legal_follow_graph.challengeable
-        ||persisted.creates_semantic_authority
-        ||persisted.creates_claim_truth
-        ||persisted.pays_residual {
-        return Err("persisted proof graph crossed the derived-only projection firewall".into());
     }
 
     let nodes=persisted.legal_follow_graph.nodes.into_iter().map(|node|
