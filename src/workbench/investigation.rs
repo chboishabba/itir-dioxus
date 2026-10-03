@@ -8,6 +8,10 @@
 pub mod projection;
 pub use projection::*;
 
+#[path = "investigation_graph.rs"]
+pub mod graph;
+pub use graph::*;
+
 use std::collections::BTreeSet;
 
 use postgres::{Client, NoTls};
