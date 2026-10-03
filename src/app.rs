@@ -4,7 +4,7 @@ use dioxus::prelude::*;
 mod legacy;
 
 #[cfg(feature = "production-data")]
-#[path = "investigation_ui.rs"]
+#[path = "investigation_ui_v2.rs"]
 mod investigation_ui;
 
 pub fn app() -> Element {
