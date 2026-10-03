@@ -9,7 +9,7 @@ use sensiblaw_pg_source_store::{ReviewAction, ReviewItem};
 
 use crate::workbench::{
     comparative::ComparativeWorkbenchReadModel, wave5_personal_handoff_read_model,
-    StageAvailability, UnifiedWorkbenchReadModel, WorkbenchStageKind,
+    UnifiedWorkbenchReadModel, WorkbenchStageKind,
 };
 
 pub fn app() -> Element {
@@ -166,16 +166,88 @@ pub fn app() -> Element {
 
 #[component]
 fn WorkbenchStageStrip(model: UnifiedWorkbenchReadModel) -> Element {
+    let mut selected_stage = use_signal(|| WorkbenchStageKind::Journal);
+    let mut selected_ref = use_signal(|| None::<String>);
+    let active_kind = selected_stage();
+    let active_stage = model.stage(active_kind).cloned();
+
     rsx! {
         section {
-            h2 { "Progression" }
+            style: "margin-top: 2rem;",
+            h2 { "Operator workspace" }
+            p {
+                style: "font-size: 0.9rem; opacity: 0.75;",
+                "Select a projection to inspect its current availability and exact semantic coordinates."
+            }
             div {
-                style: "display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.75rem;",
+                style: "display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.75rem; margin-top: 1rem;",
                 for stage in model.stages.iter() {
-                    WorkbenchStageCard {
-                        kind: stage.kind,
-                        availability: stage.availability.clone(),
-                        semantic_ref_count: stage.semantic_refs.len()
+                    {
+                        let kind = stage.kind;
+                        let label = workbench_stage_label(kind);
+                        let status = stage.availability.label();
+                        let reason = stage.availability.reason().unwrap_or("ready");
+                        let is_active = kind == active_kind;
+                        rsx! {
+                            button {
+                                key: "{label}",
+                                onclick: move |_| {
+                                    selected_stage.set(kind);
+                                    selected_ref.set(None);
+                                },
+                                style: if is_active {
+                                    "text-align:left; border:2px solid #0f5b78; background:#e7f5fb; border-radius:.6rem; padding:.8rem; cursor:pointer;"
+                                } else {
+                                    "text-align:left; border:1px solid #aaa; background:#fff; border-radius:.6rem; padding:.8rem; cursor:pointer;"
+                                },
+                                strong { "{label}" }
+                                div { style: "margin-top: 0.5rem;", "{status}" }
+                                div { style: "font-size: 0.8rem; opacity: 0.75;", "{reason}" }
+                                div { style: "font-size: 0.8rem; margin-top: 0.5rem;", "{stage.semantic_refs.len()} refs" }
+                            }
+                        }
+                    }
+                }
+            }
+            if let Some(stage) = active_stage {
+                section {
+                    style: "margin-top:1rem; border-left:4px solid #0f5b78; background:#f7fbfd; padding:1rem 1.25rem;",
+                    h3 { "{workbench_stage_label(stage.kind)} · {stage.availability.label()}" }
+                    p { "{stage.availability.reason().unwrap_or(\"This projection is currently available.\")}" }
+                    if stage.semantic_refs.is_empty() {
+                        p { style: "opacity:.75;", "No semantic coordinates are available for this projection." }
+                    } else {
+                        p { style: "font-size:.9rem;", "Coordinates" }
+                        div { style: "display:flex; flex-wrap:wrap; gap:.5rem;",
+                            for reference in stage.semantic_refs.iter() {
+                                {
+                                    let reference = reference.clone();
+                                    let is_selected = selected_ref().as_deref() == Some(reference.as_str());
+                                    rsx! {
+                                        button {
+                                            key: "{reference}",
+                                            onclick: move |_| selected_ref.set(Some(reference.clone())),
+                                            style: if is_selected {
+                                                "font-family:monospace; border:2px solid #8a4b00; background:#fff0d6; padding:.35rem .5rem; cursor:pointer;"
+                                            } else {
+                                                "font-family:monospace; border:1px solid #777; background:#fff; padding:.35rem .5rem; cursor:pointer;"
+                                            },
+                                            "{reference}"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if let Some(reference) = selected_ref() {
+                        p {
+                            style: "margin-top:1rem; font-family:monospace;",
+                            "Selected coordinate: {reference}"
+                        }
+                    }
+                    p {
+                        style: "font-size:.8rem; opacity:.75; margin-top:1rem;",
+                        "Selection is local to this workbench projection. It does not promote a coordinate, pay residuals, or change the canonical world."
                     }
                 }
             }
@@ -183,31 +255,13 @@ fn WorkbenchStageStrip(model: UnifiedWorkbenchReadModel) -> Element {
     }
 }
 
-#[component]
-fn WorkbenchStageCard(
-    kind: WorkbenchStageKind,
-    availability: StageAvailability,
-    semantic_ref_count: usize,
-) -> Element {
-    let label = match kind {
+fn workbench_stage_label(kind: WorkbenchStageKind) -> &'static str {
+    match kind {
         WorkbenchStageKind::Journal => "Journal",
         WorkbenchStageKind::Timeline => "Timeline",
         WorkbenchStageKind::Handoff => "Handoff",
         WorkbenchStageKind::MatterProof => "Matter / Proof",
         WorkbenchStageKind::Research => "Research",
-    };
-
-    let reason = availability.reason().unwrap_or("ready");
-    let status = availability.label();
-
-    rsx! {
-        article {
-            style: "border: 1px solid #aaa; border-radius: 0.6rem; padding: 0.8rem;",
-            strong { "{label}" }
-            div { style: "margin-top: 0.5rem;", "{status}" }
-            div { style: "font-size: 0.8rem; opacity: 0.75;", "{reason}" }
-            div { style: "font-size: 0.8rem; margin-top: 0.5rem;", "{semantic_ref_count} refs" }
-        }
     }
 }
 
