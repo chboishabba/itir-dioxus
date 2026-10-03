@@ -13,6 +13,111 @@ use crate::workbench::{
 };
 
 pub fn app() -> Element {
+    #[cfg(feature="production-data")]
+    if let Ok(reference)=std::env::var("ITIR_RELATIONAL_COMPARISON_REF") {
+        return match crate::workbench::relational::open_relational_pair(&reference) {
+            Ok(model)=>rsx! {
+                document::Title {"ITIR Relational Comparison"}
+                main {
+                    style:"font-family:sans-serif;max-width:1200px;margin:0 auto;padding:1.5rem;",
+                    RelationalComparisonView { model }
+                }
+            },
+            Err(error)=>rsx! {
+                document::Title {"ITIR relational comparison unavailable"}
+                main {
+                    h1 {"Relational comparison unavailable"}
+                    p {"{error}"}
+                    p {"No source or relationship is revealed outside the current MatterContext."}
+                }
+            }
+        };
+    }
+    #[cfg(feature="production-data")]
+    if let Ok(reference)=std::env::var("ITIR_INV_ACQUISITION_REF") {
+        return match crate::workbench::investigation::load_investigation_queue(&reference) {
+            Ok(model)=>rsx! {
+                document::Title {"ITIR Investigation Acquisition"}
+                main {
+                    style:"font-family:sans-serif;max-width:1200px;margin:0 auto;padding:1.5rem;",
+                    InvestigationAcquisitionView { model }
+                }
+            },
+            Err(error)=>rsx! {
+                document::Title {"ITIR investigation acquisition unavailable"}
+                main {
+                    style:"font-family:sans-serif;max-width:1000px;margin:0 auto;padding:2rem;",
+                    h1 {"Investigation acquisition unavailable"}
+                    p {"{error}"}
+                    p {"No missing source is fabricated and no blocked route is treated as executable."}
+                }
+            }
+        };
+    }
+
+    // WIKI-UI-1 is an *explicit* diagnostic selector, not a crawl or
+    // unattended Wikidata editing interface.
+    #[cfg(feature="production-data")]
+    if let Ok(reference)=std::env::var("ITIR_WIKI_DIAGNOSTIC_REF") {
+        return match crate::workbench::ontology::load_ontology_case(&reference) {
+            Ok(diagnostic)=>rsx! {
+                document::Title { "ITIR Wikidata Ontology Diagnostics" }
+                main {
+                    style:"font-family:sans-serif;max-width:1200px;margin:0 auto;padding:1.5rem;",
+                    WikiOntologyDiagnosticView { diagnostic }
+                }
+            },
+            Err(error)=>rsx! {
+                document::Title { "Ontology diagnostic unavailable" }
+                main {
+                    style:"font-family:sans-serif;padding:1.5rem;",
+                    h1 {"Ontology diagnostic unavailable"}
+                    p {"{error}"}
+                    p {"No source, witness or proposed edit is exposed without its current MatterContext scope."}
+                }
+            },
+        }
+    }
+    // Explicit pair selector: the UI never scans and auto-merges identical
+    // phrases across chat/transcripts. Scope controls observer visibility.
+    #[cfg(feature = "production-data")]
+    if let (Ok(left), Ok(right)) = (
+        std::env::var("ITIR_MIXED_LEFT_REV"),
+        std::env::var("ITIR_MIXED_RIGHT_REV"),
+    ) {
+        use sensiblaw_pg_source_store::ContextVisibility;
+        let scope=std::env::var("ITIR_MIXED_OBSERVER_SCOPE")
+            .unwrap_or_else(|_| "unavailable".into());
+        let visibility=match scope.as_str() {
+            "available"=>ContextVisibility::Available,
+            "excluded"=>ContextVisibility::ExcludedByScope,
+            "redacted"=>ContextVisibility::Redacted,
+            _=>ContextVisibility::Unavailable,
+        };
+        let chat_message_ref=std::env::var("ITIR_MIXED_CHAT_MESSAGE_REF").ok();
+        let loaded=crate::workbench::mixed_source::load_mixed_source_workspace(
+            &left,&right,chat_message_ref.as_deref(),visibility,&scope,
+        );
+        return match loaded {
+            Ok(model)=>rsx! {
+                document::Title { "ITIR Mixed-Source Review" }
+                main {
+                    style:"font-family: sans-serif; max-width: 1220px; margin: 0 auto; padding: 1.5rem;",
+                    MixedSourceDualLensView { model }
+                }
+            },
+            Err(error)=>rsx! {
+                document::Title { "ITIR mixed-source data unavailable" }
+                main {
+                    style:"font-family: sans-serif; max-width: 1000px; margin: 0 auto; padding: 2rem;",
+                    h1 {"Mixed-source review unavailable"}
+                    p {"{error}"}
+                    p {"No semantic relationship or operational activity is inferred from unavailable source records."}
+                }
+            },
+        };
+    }
+
     #[cfg(feature = "production-data")]
     if let Ok(scope_path) = std::env::var("SENSIBLAW_MATTER_SCOPE") {
         let loaded = crate::workbench::matter_scope::load_matter_scope_manifest(&scope_path)
@@ -1232,6 +1337,804 @@ pub fn ConversationSourceWorkspaceView(
             p {
                 style: "font-size: 0.82rem; opacity: 0.7; margin-top: 1rem;",
                 "Inactive assistant generations are preserved as conversation/decision history; they are not automatically independent evidence about the world."
+            }
+        }
+    }
+}
+
+#[cfg(feature = "production-data")]
+#[component]
+pub fn MixedSourceDualLensView(
+    model: crate::workbench::mixed_source::MixedSourceWorkspace,
+) -> Element {
+    use crate::visual::command::{DomainCommand, VisualObjectId};
+    use sensiblaw_pg_source_store::{
+        ContextVisibility, GenealogyStatus, SemanticComparison,
+    };
+    let mut selected = use_signal(|| None::<VisualObjectId>);
+    let mut operational_lens = use_signal(|| false);
+    let comparison = &model.comparison;
+    let semantic_label=match comparison.semantic_comparison {
+        SemanticComparison::SharedCandidateFingerprint =>
+            "Shared PNF candidate fingerprints — subject identity unreviewed",
+        SemanticComparison::NoSharedCandidateFingerprint =>
+            "No matching stored L2 fingerprints — not proof of different subjects",
+        SemanticComparison::InsufficientPnf =>
+            "PNF comparison unavailable or insufficient",
+    };
+    let genealogy_label=match comparison.genealogy {
+        GenealogyStatus::ExactNativeTextCorrespondence =>
+            "Native text correspondence; copying remains a separate question",
+        GenealogyStatus::SourceBackreferenceUnverified =>
+            "Qualified source backreference; derivation not independently certified",
+        GenealogyStatus::NoRecordedLineage =>
+            "No recorded provenance lineage; absence is not disproof",
+    };
+    let observer_label=match comparison.operational_visibility {
+        ContextVisibility::Available=>"Operational observations available",
+        ContextVisibility::NotObserved=>"No linked operational events observed in this scope",
+        ContextVisibility::Unavailable=>"Operational records unavailable",
+        ContextVisibility::ExcludedByScope=>"Operational records excluded by this scope",
+        ContextVisibility::Redacted=>"Operational records redacted",
+    };
+    let graph=if operational_lens() { &model.operational_graph } else { &model.graph };
+    let inspected=selected().and_then(|id| model.inspect(id,operational_lens()));
+    rsx! {
+        section {
+            header {
+                h1 {"Mixed-source investigation"}
+                p {"Two lenses, separate source authorities, one typed selection vocabulary."}
+                p {
+                    style:"font-size: 0.875rem; opacity: 0.8;",
+                    "Scope: {model.scope_label} · Candidate-only · Review pending · No truth promotion"
+                }
+            }
+            div {
+                style:"display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 1rem;",
+                article {
+                    style:"border: 1px solid #777; border-radius: 0.7rem; padding: 1rem;",
+                    h2 {"Source A"}
+                    p {style:"overflow-wrap: anywhere;", "{comparison.left_source_revision_ref}"}
+                    p {"Persisted candidate statements: {comparison.left_statement_refs.len()}"}
+                    pre {
+                        style:"white-space: pre-wrap; overflow-wrap: anywhere; border-radius: .35rem; padding: .65rem; background: #222; color: #eee;",
+                        "{comparison.left_source_excerpt}"
+                    }
+                }
+                article {
+                    style:"border: 1px solid #777; border-radius: 0.7rem; padding: 1rem;",
+                    h2 {"Source B"}
+                    p {style:"overflow-wrap: anywhere;", "{comparison.right_source_revision_ref}"}
+                    p {"Persisted candidate statements: {comparison.right_statement_refs.len()}"}
+                    pre {
+                        style:"white-space: pre-wrap; overflow-wrap: anywhere; border-radius: .35rem; padding: .65rem; background: #222; color: #eee;",
+                        "{comparison.right_source_excerpt}"
+                    }
+                }
+            }
+            section {
+                style:"margin-top: 1rem; border: 1px solid #888; border-radius: 0.7rem; padding: 1rem;",
+                h2 {"Context and provenance"}
+                p {"{semantic_label}"}
+                p {"{genealogy_label}"}
+                p {"{observer_label}"}
+                p {
+                    "Independent witnesses established: not assessed. "
+                    "Identical text, common candidate factors and temporal proximity are not corroboration."
+                }
+                if comparison.semantic_review_pending {
+                    p {"Semantic relation remains unresolved until reviewed."}
+                }
+            }
+            MixedSourceRelationReviewPanel { model: model.clone() }
+            section {
+                style:"margin-top: 1rem;",
+                h2 {"Source relationship lenses"}
+                button {
+                    type:"button",
+                    onclick:move |_| { operational_lens.set(false); selected.set(None); },
+                    "PNF candidate comparison"
+                }
+                button {
+                    type:"button",
+                    style:"margin-left: .5rem;",
+                    onclick:move |_| { operational_lens.set(true); selected.set(None); },
+                    "Operational history"
+                }
+                p {
+                    style:"font-size: 0.875rem; opacity: 0.8;",
+                    "Graph nodes are source-linked proposals. Selecting an object does not change review state."
+                }
+                div {
+                    style:"display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .5rem;",
+                    for node in graph.nodes.iter() {
+                        button {
+                            key:"{node.semantic_ref}",
+                            type:"button",
+                            style:"text-align: left; border: 1px solid #888; border-radius: .4rem; padding: .7rem; background: transparent; color: inherit;",
+                            onclick: {
+                                let id=node.id;
+                                move |_| {
+                                    let command=crate::visual::command::decode_shell(
+                                        crate::visual::command::ShellInput::Select(id)
+                                    );
+                                    if let DomainCommand::SelectObject(value) = command {
+                                        selected.set(Some(value));
+                                    }
+                                }
+                            },
+                            strong {"{node.label}"}
+                            div {style:"font-size: .8rem; opacity: .8;", "{node.kind}"}
+                        }
+                    }
+                }
+                if let Some(inspection)=inspected {
+                    article {
+                        style:"border-left: 4px solid #4787c9; padding: .7rem 1rem; margin-top: 1rem;",
+                        h3 {"Selected source object"}
+                        p {style:"overflow-wrap: anywhere;", "{inspection.semantic_ref}"}
+                        h4 {"Source refs"}
+                        for source_ref in inspection.source_refs.iter() {
+                            p {style:"overflow-wrap: anywhere;", "{source_ref}"}
+                        }
+                        h4 {"Provenance refs"}
+                        if inspection.provenance_refs.is_empty() {
+                            p {"No additional attached provenance in this read projection."}
+                        }
+                        for provenance_ref in inspection.provenance_refs.iter() {
+                            p {style:"overflow-wrap: anywhere;", "{provenance_ref}"}
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "production-data")]
+#[component]
+fn MixedSourceRelationReviewPanel(
+    model: crate::workbench::mixed_source::MixedSourceWorkspace,
+) -> Element {
+    use sensiblaw_pg_source_store::{CorrespondenceAxis,ReviewAction};
+    use crate::workbench::correspondence_review::CorrespondenceReviewWorkspace;
+
+    let mut live_review=use_signal(||None::<CorrespondenceReviewWorkspace>);
+    let mut review_result=use_signal(||None::<String>);
+    let mut reviewer_ref=use_signal(||String::new());
+    let mut qualification_ref=use_signal(String::new);
+    let mut evidence_request_ref=use_signal(String::new);
+
+    // The workspace's *viewer* scope is not automatically a permission to
+    // review or disclose. Review admission requires an explicit consumer scope.
+    let consumer_scope=std::env::var("ITIR_MIXED_CONSUMER_SCOPE")
+        .ok().filter(|s|!s.trim().is_empty());
+    let chat_message_ref=std::env::var("ITIR_MIXED_CHAT_MESSAGE_REF").ok();
+    let matter_scope_loaded=std::env::var("SENSIBLAW_MATTER_SCOPE").is_ok();
+
+    let mut candidates=Vec::new();
+    for witness in &model.comparison.shared_entity_candidate_refs {
+        candidates.push((
+            CorrespondenceAxis::SameSubject,witness.clone(),
+            "Explore same-subject relation (PNF entity candidate)".to_owned(),
+        ));
+    }
+    for witness in &model.comparison.shared_event_candidate_refs {
+        candidates.push((
+            CorrespondenceAxis::SameEvent,witness.clone(),
+            "Explore same-event relation (PNF event candidate)".to_owned(),
+        ));
+    }
+    for witness in &model.comparison.native_join_refs {
+        candidates.push((
+            CorrespondenceAxis::Quotation,witness.clone(),
+            "Review possible quotation (native source backreference)".to_owned(),
+        ));
+        candidates.push((
+            CorrespondenceAxis::SourceDependency,witness.clone(),
+            "Review possible source dependency (native source backreference)".to_owned(),
+        ));
+    }
+
+    let snapshot=live_review.read().clone();
+    rsx! {
+        section {
+            style:"margin-top: 1.1rem; padding: 1rem; border: 1px solid #777; border-radius: .65rem;",
+            h2 {"Review a proposed correspondence · S29"}
+            p {
+                "Review is about this proposed relationship, not the truth of either source. "
+                "A candidate must have a stored PNF fingerprint or native source-join witness."
+            }
+            if consumer_scope.is_none() || !matter_scope_loaded {
+                p {
+                    style:"font-weight: 600;",
+                    "Read-only: set ITIR_MIXED_CONSUMER_SCOPE to the actual Matter ref "
+                    "and SENSIBLAW_MATTER_SCOPE to the existing scope manifest. "
+                    "Both sources must be visible under that MatterContext."
+                }
+            } else if candidates.is_empty() {
+                p {"No witnessed relation candidates are available to admit for review."}
+            } else {
+                div {
+                    style:"display: flex; flex-wrap: wrap; gap: .5rem;",
+                    for (axis,evidence,label) in candidates.iter().cloned() {
+                        {
+                            let left=model.comparison.left_source_revision_ref.clone();
+                            let right=model.comparison.right_source_revision_ref.clone();
+                            let chat_ref=chat_message_ref.clone();
+                            let scope=consumer_scope.clone().unwrap_or_default();
+                            rsx! {
+                                button {
+                                    key:"{axis:?}:{evidence}",
+                                    type:"button",
+                                    style:"padding: .55rem .7rem; border: 1px solid #777; border-radius: .35rem; background: transparent; color: inherit; text-align: left;",
+                                    onclick:move |_| {
+                                        match crate::workbench::correspondence_review::propose_review(
+                                            &left,&right,chat_ref.as_deref(),axis,&evidence,&scope
+                                        ) {
+                                            Ok(reopened)=>{
+                                                review_result.set(Some(
+                                                    format!("Reopened S29 item: {}",reopened.relation.review_item_ref)
+                                                ));
+                                                live_review.set(Some(reopened));
+                                            },
+                                            Err(error)=>review_result.set(Some(format!("Review proposal unavailable: {error}"))),
+                                        }
+                                    },
+                                    "{label}"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if let Some(value)=review_result.read().as_ref() {
+                p {style:"overflow-wrap: anywhere;", "{value}"}
+            }
+            if let Some(current)=snapshot {
+                article {
+                    style:"margin-top: 1rem; border-left: 3px solid #4787c9; padding: .75rem;",
+                    h3 {"Persisted correspondence review item"}
+                    p {style:"overflow-wrap: anywhere;", "{current.relation.relation_ref}"}
+                    p {"Axis: {current.relation.axis:?} · S29 status: {current.item.current_status:?}"}
+                    p {style:"overflow-wrap: anywhere;", "Evidence: {current.relation.evidence_ref}"}
+                    p {style:"overflow-wrap: anywhere;", "Consumer scope: {current.relation.consumer_scope_ref}"}
+                    p {"Correspondence review does not create semantic authority, claim truth or evidentiary independence."}
+                    label {
+                        "Reviewer identity"
+                        input {
+                            style:"display: block; width: min(100%, 28rem); margin-top: .3rem;",
+                            placeholder:"required reviewer ref",
+                            value:reviewer_ref(),
+                            oninput:move |e| reviewer_ref.set(e.value()),
+                        }
+                    }
+                    label {
+                        "Qualification ref (for Qualify)"
+                        input {
+                            style:"display: block; width: min(100%, 28rem); margin-top: .3rem;",
+                            value:qualification_ref(),
+                            oninput:move |e| qualification_ref.set(e.value()),
+                        }
+                    }
+                    label {
+                        "Requested evidence ref (for RequestEvidence)"
+                        input {
+                            style:"display: block; width: min(100%, 28rem); margin-top: .3rem;",
+                            value:evidence_request_ref(),
+                            oninput:move |e| evidence_request_ref.set(e.value()),
+                        }
+                    }
+                    details {
+                        style:"margin: .75rem 0;",
+                        summary {"Attributable S29 review receipt history ({current.history.len()})"}
+                        p {
+                            style:"font-size: .85rem; opacity: .7;",
+                            "Receipts are listed by command reference, not claimed wall-clock order."
+                        }
+                        for receipt in current.history.iter() {
+                            article {
+                                key:"{receipt.command_ref}",
+                                style:"border-bottom: 1px solid #555; padding: .45rem;",
+                                p {"Reviewer: {receipt.reviewer_ref} · Action: {receipt.action_ref}"}
+                                p {"Effect: {receipt.effect_ref}"}
+                                if let Some(effect_value)=receipt.effect_value_ref.as_ref() {
+                                    p {style:"overflow-wrap: anywhere;", "Value: {effect_value}"}
+                                }
+                                p {style:"overflow-wrap: anywhere;", "Receipt: {receipt.command_ref}"}
+                            }
+                        }
+                    }
+                    div {
+                        style:"display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .8rem;",
+                        for action in current.item.available_actions.iter().copied() {
+                            if action != ReviewAction::OpenSource && action != ReviewAction::FollowAuthority {
+                                {
+                                    let relation_ref=current.relation.relation_ref.clone();
+                                    rsx! {
+                                        button {
+                                            key:"{action:?}",
+                                            type:"button",
+                                            onclick:move |_| {
+                                                let reviewer=reviewer_ref.read().trim().to_owned();
+                                                let qualification=qualification_ref.read().trim().to_owned();
+                                                let evidence_request=evidence_request_ref.read().trim().to_owned();
+                                                let qualification=(action==ReviewAction::Qualify)
+                                                    .then_some(qualification);
+                                                let evidence_request=(action==ReviewAction::RequestEvidence)
+                                                    .then_some(evidence_request);
+                                                match crate::workbench::correspondence_review::execute_relation_review(
+                                                    &relation_ref,action,&reviewer,qualification,evidence_request,
+                                                ) {
+                                                    Ok((receipt,reopened))=>{
+                                                        review_result.set(Some(format!(
+                                                            "S29 persisted: {} ({:?}); current status {:?}",
+                                                            receipt.command_ref,receipt.action,reopened.item.current_status,
+                                                        )));
+                                                        live_review.set(Some(reopened));
+                                                    },
+                                                    Err(error)=>review_result.set(Some(format!(
+                                                        "S29 action rejected: {error}"
+                                                    ))),
+                                                }
+                                            },
+                                            "{action:?}"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature="production-data")]
+#[component]
+fn WikiOntologyDiagnosticView(
+    diagnostic:sensiblaw_pg_source_store::OntologyDiagnosticRead,
+)->Element {
+    use sensiblaw_pg_source_store::ReviewAction;
+    use crate::visual::command::{DomainCommand,ShellInput,VisualObjectId,decode_shell};
+    let mut selected_graph_object=use_signal(||None::<VisualObjectId>);
+    let mut current=use_signal(||diagnostic);
+    let mut reviewer_ref=use_signal(String::new);
+    let mut qualification_ref=use_signal(String::new);
+    let mut evidence_request_ref=use_signal(String::new);
+    let mut feedback=use_signal(||None::<String>);
+    let data=current.read().clone();
+    let graph=crate::workbench::ontology_graph::ontology_diagnostic_graph(&data);
+    let inspected=selected_graph_object().and_then(|id|
+        crate::workbench::ontology_graph::inspect_ontology_graph(&graph,id));
+    let p=&data.packet;
+    let view=format!("{:?}",p.graph_view);
+    let checker=format!("{:?}",p.checker_kind);
+    let disposition=format!("{:?}",p.disposition);
+    let status=format!("{:?}",data.s29_status);
+    rsx! {
+        article {
+            header {
+                h1 {"Wikidata ontology · finite diagnostic"}
+                p {"Graph view: {view} · Checker: {checker} · Outcome: {disposition}"}
+                p {
+                    style:"opacity:.8;",
+                    "Candidate-only. A modeled checker verdict is not a community edit, claim truth or global Wikidata consistency proof."
+                }
+            }
+            section {
+                style:"padding:.8rem;border:1px solid #888;border-radius:.5rem;",
+                h2 {"Source and execution receipts"}
+                p {style:"overflow-wrap:anywhere;", "Native source revision: {p.source_revision_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Snapshot digest: {p.source_snapshot_digest_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Wikidata entity: {p.wikidata_entity_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Graph slice: {p.graph_slice_ref:?}"}
+                p {style:"overflow-wrap:anywhere;", "Lean owner: {p.lean_owner_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Lean source commit: {p.lean_source_commit}"}
+                p {style:"overflow-wrap:anywhere;", "Producer run: {p.producer_run_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Producer-declared execution receipt: {p.producer_receipt_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Output digest: {p.producer_output_digest_ref}"}
+                p {"Producer-reported Lean kernel check: {p.lean_kernel_checked} · Original author: {p.original_author_ref}"}
+                p {style:"overflow-wrap:anywhere;", "DASHI integration: {p.integration_ref}"}
+                p {"Reviewer scope: {data.consumer_scope_ref}"}
+            }
+            section {
+                style:"margin-top:1rem;padding:.8rem;border:1px solid #888;border-radius:.5rem;",
+                h2 {"Checker/source/witness graph"}
+                p {
+                    "Typed relationships are producer-reported review objects, not admitted semantic relations. "
+                    "Dioxus and wgpu use the same GraphIr/DomainCommand IDs."
+                }
+                div {
+                    style:"display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:.5rem;",
+                    for vertex in graph.nodes.iter() {
+                        {
+                            let id=vertex.id;
+                            rsx! {
+                                button {
+                                    key:"{vertex.semantic_ref}",
+                                    type:"button",
+                                    style:"text-align:left;padding:.7rem;border:1px solid #777;border-radius:.4rem;",
+                                    onclick:move |_| {
+                                        if let DomainCommand::SelectObject(selected)=
+                                            decode_shell(ShellInput::Select(id)) {
+                                            selected_graph_object.set(Some(selected));
+                                        }
+                                    },
+                                    strong {"{vertex.label}"}
+                                    p {style:"overflow-wrap:anywhere;font-size:.8rem;", "{vertex.kind}"}
+                                }
+                            }
+                        }
+                    }
+                }
+                if let Some(selection)=inspected {
+                    article {
+                        style:"margin-top:.7rem;border-left:4px solid #4787c9;padding:.6rem;",
+                        h3 {"Selected graph object"}
+                        p {style:"overflow-wrap:anywhere;", "{selection.semantic_ref}"}
+                        for source in selection.source_refs.iter() {
+                            p {style:"overflow-wrap:anywhere;", "Source: {source}"}
+                        }
+                        for provenance in selection.provenance_refs.iter() {
+                            p {style:"overflow-wrap:anywhere;", "Provenance: {provenance}"}
+                        }
+                    }
+                }
+            }
+            section {
+                style:"margin-top:1rem;",
+                h2 {"Rule witnesses · {p.witnesses.len()}"}
+                for witness in p.witnesses.iter() {
+                    article {
+                        key:"{witness.witness_ref}",
+                        style:"padding:.8rem;margin-top:.5rem;border:1px solid #888;border-radius:.5rem;",
+                        strong {"{witness.rule_ref}"}
+                        p {"{witness.explanation}"}
+                        p {style:"overflow-wrap:anywhere;", "Witness: {witness.witness_ref}"}
+                        h4 {"Exact source statements"}
+                        for reference in witness.statement_refs.iter() {
+                            p {style:"overflow-wrap:anywhere;", "{reference}"}
+                        }
+                        if !witness.native_statements.is_empty() {
+                            details {
+                                summary {"Producer-native statement bundles (qualifiers, ranks, references)"}
+                                for statement in witness.native_statements.iter() {
+                                    article {
+                                        key:"{statement.statement_ref}",
+                                        style:"padding:.65rem;border:1px solid #777;border-radius:.4rem;",
+                                        p {style:"overflow-wrap:anywhere;", "GUID: {statement.statement_ref}"}
+                                        p {style:"overflow-wrap:anywhere;", "Subject: {statement.subject_ref}"}
+                                        p {style:"overflow-wrap:anywhere;", "Property: {statement.property_ref}"}
+                                        p {style:"overflow-wrap:anywhere;", "Value: {statement.value_ref}"}
+                                        p {"Rank: {statement.rank_ref}"}
+                                        p {style:"overflow-wrap:anywhere;", "Statement revision: {statement.statement_revision_ref}"}
+                                        for qualifier in statement.qualifiers.iter() {
+                                            p {style:"overflow-wrap:anywhere;", "Qualifier {qualifier.property_ref}: {qualifier.value_ref}"}
+                                        }
+                                        for native_reference in statement.reference_refs.iter() {
+                                            p {style:"overflow-wrap:anywhere;", "Reference: {native_reference}"}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        h4 {"Additional evidence refs"}
+                        for evidence in witness.evidence_refs.iter() {
+                            p {style:"overflow-wrap:anywhere;", "{evidence}"}
+                        }
+                    }
+                }
+                if p.witnesses.is_empty() {
+                    p {"No source-backed violation witness in this finite output; this does not certify the world."}
+                }
+            }
+            section {
+                h2 {"Unpaid obligations · {p.missing_obligations.len()}"}
+                for missing in p.missing_obligations.iter() {
+                    p {"{missing}"}
+                }
+            }
+            section {
+                h2 {"Advisory repair candidates · {p.repair_candidates.len()}"}
+                for candidate in p.repair_candidates.iter() {
+                    article {
+                        key:"{candidate.candidate_ref}",
+                        style:"margin-top:.5rem;padding:.8rem;border:1px solid #888;border-radius:.5rem;",
+                        h3 {"{candidate.candidate_ref}"}
+                        p {"{candidate.proposed_edit_description}"}
+                        p {"{candidate.rationale}"}
+                        p {"Modeled verdict: {candidate.modeled_verdict_ref}"}
+                        p {style:"overflow-wrap:anywhere;", "Modeled before-score: {candidate.modeled_before_ref}"}
+                        p {style:"overflow-wrap:anywhere;", "Modeled hypothetical after-score (not observed): {candidate.modeled_after_ref}"}
+                        p {"Wikidata modification: false · Public edit authority: false"}
+                    }
+                }
+            }
+            section {
+                style:"margin-top:1rem;padding:1rem;border:1px solid #888;border-radius:.5rem;",
+                h2 {"S29 review · {status}"}
+                p {"Review concerns the finite diagnostic; accepting it does not authorize a repair or public edit."}
+                label {
+                    "Reviewer identity"
+                    input {
+                        value:reviewer_ref(),
+                        oninput:move |event|reviewer_ref.set(event.value()),
+                    }
+                }
+                label {
+                    "Qualification reference"
+                    input {
+                        value:qualification_ref(),
+                        oninput:move |event|qualification_ref.set(event.value()),
+                    }
+                }
+                label {
+                    "Evidence request reference"
+                    input {
+                        value:evidence_request_ref(),
+                        oninput:move |event|evidence_request_ref.set(event.value()),
+                    }
+                }
+                div {
+                    style:"display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem;",
+                    for action in [
+                        ReviewAction::Accept,ReviewAction::Reject,
+                        ReviewAction::Abstain,ReviewAction::Qualify,
+                        ReviewAction::RequestEvidence,ReviewAction::Supersede,
+                    ] {
+                        {
+                            let diagnostic_ref=data.diagnostic_ref.clone();
+                            rsx! {
+                                button {
+                                    key:"{action:?}",
+                                    type:"button",
+                                    onclick:move |_| {
+                                        let reviewer=reviewer_ref.read().trim().to_owned();
+                                        let qual=qualification_ref.read().trim().to_owned();
+                                        let request=evidence_request_ref.read().trim().to_owned();
+                                        match crate::workbench::ontology::review_ontology_case(
+                                            &diagnostic_ref,action,&reviewer,
+                                            (action==ReviewAction::Qualify).then_some(qual),
+                                            (action==ReviewAction::RequestEvidence).then_some(request),
+                                        ) {
+                                            Ok((receipt,reopened))=>{
+                                                feedback.set(Some(format!(
+                                                    "Persisted S29 receipt {} for {:?}",
+                                                    receipt.command_ref,receipt.action,
+                                                )));
+                                                current.set(reopened);
+                                            },
+                                            Err(error)=>feedback.set(Some(format!(
+                                                "S29 action rejected: {error}"
+                                            ))),
+                                        }
+                                    },
+                                    "{action:?}"
+                                }
+                            }
+                        }
+                    }
+                }
+                if let Some(message)=feedback.read().as_ref() {
+                    p {style:"overflow-wrap:anywhere;", "{message}"}
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature="production-data")]
+#[component]
+fn RelationalComparisonView(
+    model:crate::workbench::relational::RelationalWorkspace,
+)->Element{
+    use crate::visual::command::{DomainCommand,ShellInput,VisualObjectId,decode_shell};
+    let mut selected=use_signal(||None::<VisualObjectId>);
+    let pair=&model.packet;
+    let cmp=&pair.comparison;
+    let graph=&model.graph;
+    let inspected=selected().and_then(|id|
+        crate::workbench::relational::inspect(&model,id));
+    rsx! {
+        section {
+            h1 {"Source-grounded relational comparison"}
+            p {"Consumer: {cmp.consumer_ref}"}
+            p {"Candidate: {cmp.finding:?} · No source merge, truth payment, or independence claim"}
+            p {style:"overflow-wrap:anywhere;", "Left canonical source SHA-256: {pair.left_source_content_sha256}"}
+            p {style:"overflow-wrap:anywhere;", "Right canonical source SHA-256: {pair.right_source_content_sha256}"}
+            div {
+                style:"display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:.8rem;",
+                article {
+                    style:"border:1px solid #777;border-radius:.5rem;padding:1rem;",
+                    h2 {"Left original"}
+                    p {style:"overflow-wrap:anywhere;", "Source revision: {pair.left.source_revision_ref}"}
+                    p {style:"overflow-wrap:anywhere;", "PNF observation: {pair.left.observation_ref}"}
+                    p {"Family: {pair.left.source_family:?}"}
+                    p {style:"overflow-wrap:anywhere;", "Predicate candidate: {pair.left.predicate_candidate_ref}"}
+                    for role in pair.left.role_bindings.iter() {
+                        p {style:"overflow-wrap:anywhere;",
+                           "{role.role_ref}[{role.occurrence}] → {role.filler_candidate_ref}"}
+                    }
+                    for hint in pair.left.role_type_hypotheses.iter() {
+                        p {style:"overflow-wrap:anywhere;",
+                           "Candidate type for {hint.role_ref}[{hint.occurrence}]: {hint.candidate_type_ref} · Witness {hint.witness_ref}"}
+                    }
+                    for ref_id in pair.left.native_metadata_refs.iter() {
+                        p {style:"overflow-wrap:anywhere;", "Native metadata: {ref_id}"}
+                    }
+                }
+                article {
+                    style:"border:1px solid #777;border-radius:.5rem;padding:1rem;",
+                    h2 {"Right original"}
+                    p {style:"overflow-wrap:anywhere;", "Source revision: {pair.right.source_revision_ref}"}
+                    p {style:"overflow-wrap:anywhere;", "PNF observation: {pair.right.observation_ref}"}
+                    p {"Family: {pair.right.source_family:?}"}
+                    p {style:"overflow-wrap:anywhere;", "Predicate candidate: {pair.right.predicate_candidate_ref}"}
+                    for role in pair.right.role_bindings.iter() {
+                        p {style:"overflow-wrap:anywhere;",
+                           "{role.role_ref}[{role.occurrence}] → {role.filler_candidate_ref}"}
+                    }
+                    for hint in pair.right.role_type_hypotheses.iter() {
+                        p {style:"overflow-wrap:anywhere;",
+                           "Candidate type for {hint.role_ref}[{hint.occurrence}]: {hint.candidate_type_ref} · Witness {hint.witness_ref}"}
+                    }
+                    for ref_id in pair.right.native_metadata_refs.iter() {
+                        p {style:"overflow-wrap:anywhere;", "Native metadata: {ref_id}"}
+                    }
+                }
+            }
+            section {
+                style:"margin-top:1rem;border:1px solid #777;border-radius:.5rem;padding:1rem;",
+                h2 {"Context-indexed residuals · {cmp.residuals.len()}"}
+                for (index,residual) in cmp.residuals.iter().enumerate() {
+                    article {
+                        key:"{index}",
+                        p {"{residual.kind:?}"}
+                        p {style:"overflow-wrap:anywhere;", "Left: {residual.left_ref:?}"}
+                        p {style:"overflow-wrap:anywhere;", "Right: {residual.right_ref:?}"}
+                        p {style:"overflow-wrap:anywhere;", "Unpaid obligation: {residual.obligation_ref}"}
+                    }
+                }
+                h3 {"Preserved report polarity"}
+                p {"Supporting reports: {cmp.positive_support_refs.len()}"}
+                p {"Counter-supporting reports: {cmp.counter_support_refs.len()}"}
+                p {"Explicit unknown reports: {cmp.explicit_unknown_refs.len()}"}
+                h3 {"Role/type support receipts"}
+                for evidence in cmp.role_type_evidence_refs.iter() {
+                    p {style:"overflow-wrap:anywhere;", "{evidence}"}
+                }
+                h3 {"Licensed transport witnesses"}
+                for witness in cmp.used_alignment_witness_refs.iter() {
+                    p {style:"overflow-wrap:anywhere;", "{witness}"}
+                }
+            }
+            section {
+                h2 {"Graph and source inspector"}
+                p {"The graph is a visualization of the typed comparison, not an independent semantics engine."}
+                for vertex in graph.nodes.iter() {
+                    {
+                        let id=vertex.id;
+                        rsx! {
+                            button {
+                                key:"{vertex.semantic_ref}",
+                                type:"button",
+                                onclick:move |_| {
+                                    if let DomainCommand::SelectObject(value)=
+                                        decode_shell(ShellInput::Select(id)) {
+                                        selected.set(Some(value));
+                                    }
+                                },
+                                "{vertex.label}"
+                            }
+                        }
+                    }
+                }
+                if let Some(detail)=inspected {
+                    article {
+                        h3 {"Selected comparison object"}
+                        p {style:"overflow-wrap:anywhere;", "{detail.semantic_ref}"}
+                        for reference in detail.source_refs.iter() {
+                            p {style:"overflow-wrap:anywhere;", "Source: {reference}"}
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature="production-data")]
+#[component]
+fn InvestigationAcquisitionView(
+    model:crate::workbench::investigation::InvestigationQueueWorkspace,
+)->Element{
+    let queue=&model.queue;
+    let frontier=queue.priority.frontier_route_refs.iter()
+        .collect::<std::collections::BTreeSet<_>>();
+    let executable=queue.priority.executable_frontier_route_refs.iter()
+        .collect::<std::collections::BTreeSet<_>>();
+    rsx! {
+        article {
+            h1 {"Proof-directed investigation acquisition"}
+            p {
+                style:"font-weight:600;",
+                "Residual → acquisition obligation → non-scalar Pareto frontier"
+            }
+            p {
+                "This surface prioritises lawful follow-up work. It does not obtain evidence, "
+                "change source truth, admit a claim, or grant access authority."
+            }
+            section {
+                style:"border:1px solid #777;border-radius:.5rem;padding:1rem;",
+                h2 {"Unpaid evidentiary coordinate"}
+                p {style:"overflow-wrap:anywhere;", "Obligation: {queue.obligation.obligation_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Parent comparison: {queue.obligation.comparison_ref}"}
+                p {style:"overflow-wrap:anywhere;", "Residual: {queue.obligation.residual_obligation_ref}"}
+                p {"Target: {queue.obligation.target_description}"}
+                p {style:"overflow-wrap:anywhere;",
+                    "Access constraint: {queue.obligation.authority_or_access_constraint_ref}"}
+                p {"Availability: {queue.obligation.current_availability:?}"}
+                for source in queue.obligation.source_revision_refs.iter() {
+                    p {style:"overflow-wrap:anywhere;", "Source context: {source}"}
+                }
+            }
+            section {
+                style:"margin-top:1rem;",
+                h2 {"Acquisition routes · Pareto, not scalar score"}
+                p {
+                    "Axes: discrimination gain · dependency impact · residual coverage · "
+                    "provenance novelty · lawful/reviewer/resource cost."
+                }
+                for route in queue.routes.iter() {
+                    {
+                        let on_frontier=frontier.contains(&route.route_ref);
+                        let can_execute=executable.contains(&route.route_ref);
+                        rsx! {
+                            article {
+                                key:"{route.route_ref}",
+                                style:"border:1px solid #777;border-radius:.5rem;padding:.9rem;margin:.6rem 0;",
+                                h3 {"{route.route_ref}"}
+                                p {"{route.route_description}"}
+                                p {style:"overflow-wrap:anywhere;", "Locator: {route.source_locator_ref}"}
+                                p {"Access: {route.access_disposition:?} · executable now: {can_execute}"}
+                                p {"Frontier member: {on_frontier}"}
+                                p {style:"overflow-wrap:anywhere;", "Genealogy: {route.provenance_genealogy_ref}"}
+                                p {"Independence: {route.independence:?} · duplicate relation: {route.duplicate_relation:?}"}
+                                ul {
+                                    li {"information/discrimination gain: {route.information_gain}"}
+                                    li {"dependency-closure impact: {route.dependency_closure_impact}"}
+                                    li {"unpaid residual coverage: {route.residual_coverage}"}
+                                    li {"provenance novelty: {route.provenance_novelty}"}
+                                    li {"lawful/reviewer/resource cost: {route.acquisition_cost}"}
+                                }
+                                p {style:"overflow-wrap:anywhere;",
+                                    "Axis estimate receipt: {route.axis_estimation_receipt_ref}"}
+                            }
+                        }
+                    }
+                }
+                if queue.priority.blocked_frontier_route_refs.len()>0 {
+                    h3 {"Frontier routes blocked by current access state"}
+                    for blocked in queue.priority.blocked_frontier_route_refs.iter() {
+                        p {style:"overflow-wrap:anywhere;", "{blocked}"}
+                    }
+                }
+            }
+            section {
+                h2 {"Selective reopening targets"}
+                for target in queue.obligation.dependency_target_refs.iter() {
+                    p {style:"overflow-wrap:anywhere;", "{target}"}
+                }
+                p {
+                    "Only explicit dependency paths may reopen downstream assessments after "
+                    "a genuinely acquired source is persisted."
+                }
+            }
+            footer {
+                p {"Matter: {model.matter_ref}"}
+                p {"Scalar priority score used: false · acquisition executed: false · semantic authority: false"}
             }
         }
     }
