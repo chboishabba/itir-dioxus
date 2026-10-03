@@ -4,14 +4,19 @@
 //! the existing MatterContext. It does not execute searches, grant access,
 //! acquire a source, or mutate semantic/review state.
 
+#[path = "investigation_projection.rs"]
+pub mod projection;
+pub use projection::*;
+
 use sensiblaw_pg_source_store::{
-    load_acquisition_queue,load_database_config,
-    DurableAcquisitionQueue,
+    load_acquisition_queue, load_database_config, load_inv_governance_packet,
+    AcquisitionGovernancePacket, DurableAcquisitionQueue,
 };
 
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub struct InvestigationQueueWorkspace {
     pub queue:DurableAcquisitionQueue,
+    pub governance:Option<AcquisitionGovernancePacket>,
     pub matter_ref:String,
     pub creates_semantic_authority:bool,
     pub acquisition_executed:bool,
@@ -42,8 +47,20 @@ pub fn load_investigation_queue(
         .map_err(|e|e.to_string())?
         .ok_or_else(||"unknown investigation acquisition obligation".to_owned())?;
     let matter_ref=authorize(&queue)?;
+    let governance=match std::env::var("ITIR_INV_GOVERNANCE_REF") {
+        Ok(packet_ref)=>load_inv_governance_packet(&config,&packet_ref)
+            .map_err(|e|e.to_string())?,
+        Err(_)=>None,
+    };
+    if let Some(packet)=governance.as_ref() {
+        if packet.obligation_ref!=queue.obligation.obligation_ref
+            ||packet.comparison_ref!=queue.obligation.comparison_ref
+            ||packet.source_revision_refs!=queue.obligation.source_revision_refs {
+            return Err("governance packet does not bind to the visible acquisition queue".into());
+        }
+    }
     Ok(InvestigationQueueWorkspace{
-        queue,matter_ref,
+        queue,governance,matter_ref,
         creates_semantic_authority:false,
         acquisition_executed:false,
     })
