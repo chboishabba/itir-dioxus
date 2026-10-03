@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 description = "Dioxus + wgpu operator workbench for the ITIR/SensibLaw suite"
+autobins = false
 
 [features]
 default = ["desktop"]
@@ -19,13 +20,19 @@ serde_json = "1.0"
 wgpu = { version = "29.0.3", optional = true }
 pollster = { version = "0.4", optional = true }
 postgres = { version = "0.19", optional = true }
-sensiblaw-core = { git = "https://github.com/chboishabba/slr", rev = "2dd32c2d2047720dc3c382191ba6164cf44d7992", package = "sensiblaw-core", optional = true }
-sensiblaw-reader-model = { git = "https://github.com/chboishabba/slr", rev = "2dd32c2d2047720dc3c382191ba6164cf44d7992", package = "sensiblaw-reader-model", optional = true }
-sensiblaw-pg-source-store = { git = "https://github.com/chboishabba/slr", rev = "2dd32c2d2047720dc3c382191ba6164cf44d7992", package = "sensiblaw-pg-source-store", optional = true }
-sensiblaw-legal-runtime = { git = "https://github.com/chboishabba/slr", rev = "2dd32c2d2047720dc3c382191ba6164cf44d7992", package = "sensiblaw-legal-runtime", optional = true }
+sensiblaw-core = { git = "https://github.com/chboishabba/slr", rev = "d2b656ea85341710e9606219a444deb0e61c49f4", package = "sensiblaw-core", optional = true }
+sensiblaw-reader-model = { git = "https://github.com/chboishabba/slr", rev = "d2b656ea85341710e9606219a444deb0e61c49f4", package = "sensiblaw-reader-model", optional = true }
+sensiblaw-pg-source-store = { git = "https://github.com/chboishabba/slr", rev = "d2b656ea85341710e9606219a444deb0e61c49f4", package = "sensiblaw-pg-source-store", optional = true }
+sensiblaw-legal-runtime = { git = "https://github.com/chboishabba/slr", rev = "d2b656ea85341710e9606219a444deb0e61c49f4", package = "sensiblaw-legal-runtime", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4"
+
+[[bin]]
+name = "itir-dioxus"
+path = "src/main.rs"
+test = false
+bench = false
 
 [[example]]
 name = "au_legal_gpu_receipt"

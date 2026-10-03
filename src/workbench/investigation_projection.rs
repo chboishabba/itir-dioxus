@@ -295,8 +295,9 @@ mod tests {
             creates_semantic_authority: false,
             claim_truth_promoted: false,
         };
-        let route = |id: &str, access, gain, cost| AcquisitionRouteCandidate {
-            route_ref: id.into(), obligation_ref: obligation.obligation_ref.clone(),
+        let obligation_ref = obligation.obligation_ref.clone();
+        let route = move |id: &str, access, gain, cost| AcquisitionRouteCandidate {
+            route_ref: id.into(), obligation_ref: obligation_ref.clone(),
             route_description: id.into(), source_locator_ref: format!("locator:{id}"),
             access_disposition: access, authority_receipt_ref: None,
             provenance_genealogy_ref: format!("genealogy:{id}"),
