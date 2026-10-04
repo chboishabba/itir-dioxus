@@ -14,11 +14,31 @@ pub fn app() -> Element {
     #[cfg(feature = "production-data")]
     if let Ok(reference) = std::env::var("ITIR_INV_ACQUISITION_REF") {
         return match crate::workbench::investigation::load_investigation_queue(&reference) {
-            Ok(model) => rsx! {
-                document::Title { "ITIR Investigation Workbench" }
-                main {
-                    style: "font-family:sans-serif;max-width:1200px;margin:0 auto;padding:1.5rem;",
-                    investigation_ui::InvestigationAcquisitionView { model }
+            Ok(model) => {
+                let reviewed = model.reviewed_evidence.clone();
+                rsx! {
+                    document::Title { "ITIR Investigation Workbench" }
+                    main {
+                        style: "font-family:sans-serif;max-width:1200px;margin:0 auto;padding:1.5rem;",
+                        if let Some(reviewed) = reviewed {
+                            section {
+                                style: "border-left:4px solid #6b4f9c;background:#faf8ff;padding:.9rem 1.1rem;margin-bottom:1rem;overflow-wrap:anywhere;",
+                                h2 { "Persisted reviewed-evidence authority context" }
+                                p { "Normative order: {reviewed.normative_order_ref}" }
+                                p { "Evidence role: {reviewed.evidence_role_ref}" }
+                                p { "Consumer: {reviewed.consumer_ref} · requirement: {reviewed.requirement_ref}" }
+                                p { "Reviewed evidence: {reviewed.reviewed_evidence_ref}" }
+                                p { "Review receipt: {reviewed.review_receipt_ref}" }
+                                p { "Proposition: {reviewed.proposition_ref}" }
+                                p { "Source revision: {reviewed.source_revision_ref} · exact span: {reviewed.exact_span_ref}" }
+                                p {
+                                    style: "font-size:.82rem;opacity:.76;",
+                                    "Persisted review ≠ claim truth ≠ applicability ≠ legal authority. Normative-order coordinates are displayed, not coerced or ranked."
+                                }
+                            }
+                        }
+                        investigation_ui::InvestigationAcquisitionView { model }
+                    }
                 }
             },
             Err(error) => rsx! {
