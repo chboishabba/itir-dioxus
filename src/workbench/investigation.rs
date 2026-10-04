@@ -16,8 +16,9 @@ use std::collections::BTreeSet;
 
 use sensiblaw_pg_source_store::{
     load_acquisition_queue, load_bound_investigation_graph_projection,
-    load_database_config, load_inv_governance_packet,
-    AcquisitionGovernancePacket, DurableAcquisitionQueue, InvestigationGraphBinding,
+    load_database_config, load_inv_acceptance_case, load_inv_governance_packet,
+    load_reviewed_evidence_coordinate, AcquisitionGovernancePacket,
+    DurableAcquisitionQueue, InvestigationGraphBinding,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,6 +150,7 @@ pub struct InvestigationQueueWorkspace {
     pub queue:DurableAcquisitionQueue,
     pub governance:Option<AcquisitionGovernancePacket>,
     pub graph:Option<InvestigationGraphProjection>,
+    pub reviewed_evidence:Option<ReviewedEvidenceAuthorityProjection>,
     pub matter_ref:String,
     pub creates_semantic_authority:bool,
     pub acquisition_executed:bool,
@@ -230,6 +232,48 @@ fn load_bound_graph(
     }))
 }
 
+fn load_review_authority(
+    config:&sensiblaw_pg_source_store::DatabaseConfig,
+    authorization:&MatterAuthorization,
+    graph:Option<&InvestigationGraphProjection>,
+)->Result<Option<ReviewedEvidenceAuthorityProjection>,String>{
+    let case_ref=match std::env::var("ITIR_INV_CASE_REF") {
+        Ok(value)=>value,
+        Err(_)=>return Ok(None),
+    };
+    let case=load_inv_acceptance_case(config,&case_ref).map_err(|e|e.to_string())?;
+    if case.matter_ref!=authorization.matter_ref {
+        return Err("persisted INV case does not belong to the visible MatterContext".into());
+    }
+    if let Some(graph)=graph {
+        if case.graph_binding_ref!=graph.binding.binding_ref {
+            return Err("persisted INV case graph binding does not match the visible graph".into());
+        }
+    }
+    let reviewed=load_reviewed_evidence_coordinate(config,&case.reviewed_evidence_ref)
+        .map_err(|e|e.to_string())?;
+    if !authorization.included_refs.contains(&reviewed.source_revision_ref) {
+        return Err("reviewed-evidence source revision is excluded by MatterContext".into());
+    }
+    project_review_authority_context(&authorization.matter_ref,ReviewAuthorityProjectionInput{
+        case_ref:case.case_ref,
+        matter_ref:case.matter_ref,
+        reviewed_evidence_ref:reviewed.reviewed_evidence_ref,
+        review_receipt_ref:reviewed.review_receipt_ref,
+        consumer_ref:reviewed.consumer_ref,
+        requirement_ref:reviewed.requirement_ref,
+        evidence_role_ref:reviewed.evidence_role_ref,
+        normative_order_ref:reviewed.normative_order_ref,
+        proposition_ref:reviewed.proposition_ref,
+        source_revision_ref:reviewed.source_revision_ref,
+        exact_span_ref:reviewed.exact_span_ref,
+        candidate_only:reviewed.candidate_only,
+        creates_semantic_authority:reviewed.creates_semantic_authority,
+        applicability_promoted:reviewed.applicability_promoted,
+        claim_truth_promoted:reviewed.claim_truth_promoted,
+    }).map(Some)
+}
+
 pub fn load_investigation_queue(
     obligation_ref:&str,
 )->Result<InvestigationQueueWorkspace,String>{
@@ -251,8 +295,9 @@ pub fn load_investigation_queue(
         }
     }
     let graph=load_bound_graph(&config,&queue,&authorization)?;
+    let reviewed_evidence=load_review_authority(&config,&authorization,graph.as_ref())?;
     Ok(InvestigationQueueWorkspace{
-        queue,governance,graph,matter_ref:authorization.matter_ref,
+        queue,governance,graph,reviewed_evidence,matter_ref:authorization.matter_ref,
         creates_semantic_authority:false,
         acquisition_executed:false,
     })
