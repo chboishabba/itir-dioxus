@@ -53,6 +53,97 @@ pub struct InvestigationGraphProjection {
     pub creates_graph_edges: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReviewAuthorityProjectionInput {
+    pub case_ref: String,
+    pub matter_ref: String,
+    pub reviewed_evidence_ref: String,
+    pub review_receipt_ref: String,
+    pub consumer_ref: String,
+    pub requirement_ref: String,
+    pub evidence_role_ref: String,
+    pub normative_order_ref: String,
+    pub proposition_ref: String,
+    pub source_revision_ref: String,
+    pub exact_span_ref: String,
+    pub candidate_only: bool,
+    pub creates_semantic_authority: bool,
+    pub applicability_promoted: bool,
+    pub claim_truth_promoted: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReviewedEvidenceAuthorityProjection {
+    pub case_ref: String,
+    pub reviewed_evidence_ref: String,
+    pub review_receipt_ref: String,
+    pub consumer_ref: String,
+    pub requirement_ref: String,
+    pub evidence_role_ref: String,
+    pub normative_order_ref: String,
+    pub proposition_ref: String,
+    pub source_revision_ref: String,
+    pub exact_span_ref: String,
+    pub candidate_only: bool,
+    pub creates_semantic_authority: bool,
+    pub applicability_promoted: bool,
+    pub claim_truth_promoted: bool,
+    pub persistence_creates_legal_authority: bool,
+}
+
+fn nonempty(value: &str) -> bool {
+    !value.trim().is_empty()
+}
+
+pub fn project_review_authority_context(
+    expected_matter_ref: &str,
+    input: ReviewAuthorityProjectionInput,
+) -> Result<ReviewedEvidenceAuthorityProjection, String> {
+    if !nonempty(expected_matter_ref)
+        || !nonempty(&input.case_ref)
+        || !nonempty(&input.matter_ref)
+        || !nonempty(&input.reviewed_evidence_ref)
+        || !nonempty(&input.review_receipt_ref)
+        || !nonempty(&input.consumer_ref)
+        || !nonempty(&input.requirement_ref)
+        || !nonempty(&input.evidence_role_ref)
+        || !nonempty(&input.normative_order_ref)
+        || !nonempty(&input.proposition_ref)
+        || !nonempty(&input.source_revision_ref)
+        || !nonempty(&input.exact_span_ref)
+    {
+        return Err("reviewed evidence projection requires complete persisted authority coordinates".into());
+    }
+    if input.matter_ref != expected_matter_ref {
+        return Err("reviewed evidence case does not belong to the visible MatterContext".into());
+    }
+    if !input.candidate_only
+        || input.creates_semantic_authority
+        || input.applicability_promoted
+        || input.claim_truth_promoted
+    {
+        return Err("reviewed evidence crossed its non-promotion boundary".into());
+    }
+
+    Ok(ReviewedEvidenceAuthorityProjection {
+        case_ref: input.case_ref,
+        reviewed_evidence_ref: input.reviewed_evidence_ref,
+        review_receipt_ref: input.review_receipt_ref,
+        consumer_ref: input.consumer_ref,
+        requirement_ref: input.requirement_ref,
+        evidence_role_ref: input.evidence_role_ref,
+        normative_order_ref: input.normative_order_ref,
+        proposition_ref: input.proposition_ref,
+        source_revision_ref: input.source_revision_ref,
+        exact_span_ref: input.exact_span_ref,
+        candidate_only: true,
+        creates_semantic_authority: false,
+        applicability_promoted: false,
+        claim_truth_promoted: false,
+        persistence_creates_legal_authority: false,
+    })
+}
+
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub struct InvestigationQueueWorkspace {
     pub queue:DurableAcquisitionQueue,
