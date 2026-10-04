@@ -234,6 +234,7 @@ fn load_bound_graph(
 
 fn load_review_authority(
     config:&sensiblaw_pg_source_store::DatabaseConfig,
+    queue:&DurableAcquisitionQueue,
     authorization:&MatterAuthorization,
     graph:Option<&InvestigationGraphProjection>,
 )->Result<Option<ReviewedEvidenceAuthorityProjection>,String>{
@@ -245,6 +246,16 @@ fn load_review_authority(
     if case.matter_ref!=authorization.matter_ref {
         return Err("persisted INV case does not belong to the visible MatterContext".into());
     }
+    if case.target_description!=queue.obligation.target_description
+        ||case.authority_or_access_constraint_ref!=queue.obligation.authority_or_access_constraint_ref
+        ||case.dependency_target_refs!=queue.obligation.dependency_target_refs {
+        return Err("persisted INV case does not bind to the visible acquisition obligation".into());
+    }
+    let case_route_refs=case.routes.iter().map(|route|route.route_ref.clone()).collect::<BTreeSet<_>>();
+    let queue_route_refs=queue.routes.iter().map(|route|route.route_ref.clone()).collect::<BTreeSet<_>>();
+    if case_route_refs!=queue_route_refs {
+        return Err("persisted INV case routes do not match the visible acquisition queue".into());
+    }
     if let Some(graph)=graph {
         if case.graph_binding_ref!=graph.binding.binding_ref {
             return Err("persisted INV case graph binding does not match the visible graph".into());
@@ -252,6 +263,9 @@ fn load_review_authority(
     }
     let reviewed=load_reviewed_evidence_coordinate(config,&case.reviewed_evidence_ref)
         .map_err(|e|e.to_string())?;
+    if !queue.obligation.source_revision_refs.iter().any(|source|source==&reviewed.source_revision_ref) {
+        return Err("reviewed evidence is not grounded in an acquisition-parent source revision".into());
+    }
     if !authorization.included_refs.contains(&reviewed.source_revision_ref) {
         return Err("reviewed-evidence source revision is excluded by MatterContext".into());
     }
@@ -295,7 +309,7 @@ pub fn load_investigation_queue(
         }
     }
     let graph=load_bound_graph(&config,&queue,&authorization)?;
-    let reviewed_evidence=load_review_authority(&config,&authorization,graph.as_ref())?;
+    let reviewed_evidence=load_review_authority(&config,&queue,&authorization,graph.as_ref())?;
     Ok(InvestigationQueueWorkspace{
         queue,governance,graph,reviewed_evidence,matter_ref:authorization.matter_ref,
         creates_semantic_authority:false,
