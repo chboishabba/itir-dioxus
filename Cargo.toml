@@ -20,10 +20,10 @@ serde_json = "1.0"
 wgpu = { version = "29.0.3", optional = true }
 pollster = { version = "0.4", optional = true }
 postgres = { version = "0.19", optional = true }
-sensiblaw-core = { git = "https://github.com/chboishabba/slr", rev = "d2b656ea85341710e9606219a444deb0e61c49f4", package = "sensiblaw-core", optional = true }
-sensiblaw-reader-model = { git = "https://github.com/chboishabba/slr", rev = "d2b656ea85341710e9606219a444deb0e61c49f4", package = "sensiblaw-reader-model", optional = true }
-sensiblaw-pg-source-store = { git = "https://github.com/chboishabba/slr", rev = "d2b656ea85341710e9606219a444deb0e61c49f4", package = "sensiblaw-pg-source-store", optional = true }
-sensiblaw-legal-runtime = { git = "https://github.com/chboishabba/slr", rev = "d2b656ea85341710e9606219a444deb0e61c49f4", package = "sensiblaw-legal-runtime", optional = true }
+sensiblaw-core = { git = "https://github.com/chboishabba/slr", rev = "8f5184285ff4ade77f72094b8be0012d260dd2b0", package = "sensiblaw-core", optional = true }
+sensiblaw-reader-model = { git = "https://github.com/chboishabba/slr", rev = "8f5184285ff4ade77f72094b8be0012d260dd2b0", package = "sensiblaw-reader-model", optional = true }
+sensiblaw-pg-source-store = { git = "https://github.com/chboishabba/slr", rev = "8f5184285ff4ade77f72094b8be0012d260dd2b0", package = "sensiblaw-pg-source-store", optional = true }
+sensiblaw-legal-runtime = { git = "https://github.com/chboishabba/slr", rev = "8f5184285ff4ade77f72094b8be0012d260dd2b0", package = "sensiblaw-legal-runtime", optional = true }
 
 [dev-dependencies]
 pretty_assertions = "1.4"

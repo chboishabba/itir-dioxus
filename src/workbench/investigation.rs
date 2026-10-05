@@ -16,8 +16,9 @@ use std::collections::BTreeSet;
 
 use sensiblaw_pg_source_store::{
     load_acquisition_queue, load_bound_investigation_graph_projection,
-    load_database_config, load_inv_governance_packet,
-    AcquisitionGovernancePacket, DurableAcquisitionQueue, InvestigationGraphBinding,
+    load_database_config, load_inv_acceptance_case, load_inv_governance_packet,
+    load_reviewed_evidence_coordinate, AcquisitionGovernancePacket,
+    DurableAcquisitionQueue, InvestigationGraphBinding,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,11 +54,103 @@ pub struct InvestigationGraphProjection {
     pub creates_graph_edges: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReviewAuthorityProjectionInput {
+    pub case_ref: String,
+    pub matter_ref: String,
+    pub reviewed_evidence_ref: String,
+    pub review_receipt_ref: String,
+    pub consumer_ref: String,
+    pub requirement_ref: String,
+    pub evidence_role_ref: String,
+    pub normative_order_ref: String,
+    pub proposition_ref: String,
+    pub source_revision_ref: String,
+    pub exact_span_ref: String,
+    pub candidate_only: bool,
+    pub creates_semantic_authority: bool,
+    pub applicability_promoted: bool,
+    pub claim_truth_promoted: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReviewedEvidenceAuthorityProjection {
+    pub case_ref: String,
+    pub reviewed_evidence_ref: String,
+    pub review_receipt_ref: String,
+    pub consumer_ref: String,
+    pub requirement_ref: String,
+    pub evidence_role_ref: String,
+    pub normative_order_ref: String,
+    pub proposition_ref: String,
+    pub source_revision_ref: String,
+    pub exact_span_ref: String,
+    pub candidate_only: bool,
+    pub creates_semantic_authority: bool,
+    pub applicability_promoted: bool,
+    pub claim_truth_promoted: bool,
+    pub persistence_creates_legal_authority: bool,
+}
+
+fn nonempty(value: &str) -> bool {
+    !value.trim().is_empty()
+}
+
+pub fn project_review_authority_context(
+    expected_matter_ref: &str,
+    input: ReviewAuthorityProjectionInput,
+) -> Result<ReviewedEvidenceAuthorityProjection, String> {
+    if !nonempty(expected_matter_ref)
+        || !nonempty(&input.case_ref)
+        || !nonempty(&input.matter_ref)
+        || !nonempty(&input.reviewed_evidence_ref)
+        || !nonempty(&input.review_receipt_ref)
+        || !nonempty(&input.consumer_ref)
+        || !nonempty(&input.requirement_ref)
+        || !nonempty(&input.evidence_role_ref)
+        || !nonempty(&input.normative_order_ref)
+        || !nonempty(&input.proposition_ref)
+        || !nonempty(&input.source_revision_ref)
+        || !nonempty(&input.exact_span_ref)
+    {
+        return Err("reviewed evidence projection requires complete persisted authority coordinates".into());
+    }
+    if input.matter_ref != expected_matter_ref {
+        return Err("reviewed evidence case does not belong to the visible MatterContext".into());
+    }
+    if !input.candidate_only
+        || input.creates_semantic_authority
+        || input.applicability_promoted
+        || input.claim_truth_promoted
+    {
+        return Err("reviewed evidence crossed its non-promotion boundary".into());
+    }
+
+    Ok(ReviewedEvidenceAuthorityProjection {
+        case_ref: input.case_ref,
+        reviewed_evidence_ref: input.reviewed_evidence_ref,
+        review_receipt_ref: input.review_receipt_ref,
+        consumer_ref: input.consumer_ref,
+        requirement_ref: input.requirement_ref,
+        evidence_role_ref: input.evidence_role_ref,
+        normative_order_ref: input.normative_order_ref,
+        proposition_ref: input.proposition_ref,
+        source_revision_ref: input.source_revision_ref,
+        exact_span_ref: input.exact_span_ref,
+        candidate_only: true,
+        creates_semantic_authority: false,
+        applicability_promoted: false,
+        claim_truth_promoted: false,
+        persistence_creates_legal_authority: false,
+    })
+}
+
 #[derive(Debug,Clone,PartialEq,Eq)]
 pub struct InvestigationQueueWorkspace {
     pub queue:DurableAcquisitionQueue,
     pub governance:Option<AcquisitionGovernancePacket>,
     pub graph:Option<InvestigationGraphProjection>,
+    pub reviewed_evidence:Option<ReviewedEvidenceAuthorityProjection>,
     pub matter_ref:String,
     pub creates_semantic_authority:bool,
     pub acquisition_executed:bool,
@@ -139,6 +232,62 @@ fn load_bound_graph(
     }))
 }
 
+fn load_review_authority(
+    config:&sensiblaw_pg_source_store::DatabaseConfig,
+    queue:&DurableAcquisitionQueue,
+    authorization:&MatterAuthorization,
+    graph:Option<&InvestigationGraphProjection>,
+)->Result<Option<ReviewedEvidenceAuthorityProjection>,String>{
+    let case_ref=match std::env::var("ITIR_INV_CASE_REF") {
+        Ok(value)=>value,
+        Err(_)=>return Ok(None),
+    };
+    let case=load_inv_acceptance_case(config,&case_ref).map_err(|e|e.to_string())?;
+    if case.matter_ref!=authorization.matter_ref {
+        return Err("persisted INV case does not belong to the visible MatterContext".into());
+    }
+    if case.target_description!=queue.obligation.target_description
+        ||case.authority_or_access_constraint_ref!=queue.obligation.authority_or_access_constraint_ref
+        ||case.dependency_target_refs!=queue.obligation.dependency_target_refs {
+        return Err("persisted INV case does not bind to the visible acquisition obligation".into());
+    }
+    let case_route_refs=case.routes.iter().map(|route|route.route_ref.clone()).collect::<BTreeSet<_>>();
+    let queue_route_refs=queue.routes.iter().map(|route|route.route_ref.clone()).collect::<BTreeSet<_>>();
+    if case_route_refs!=queue_route_refs {
+        return Err("persisted INV case routes do not match the visible acquisition queue".into());
+    }
+    if let Some(graph)=graph {
+        if case.graph_binding_ref!=graph.binding.binding_ref {
+            return Err("persisted INV case graph binding does not match the visible graph".into());
+        }
+    }
+    let reviewed=load_reviewed_evidence_coordinate(config,&case.reviewed_evidence_ref)
+        .map_err(|e|e.to_string())?;
+    if !queue.obligation.source_revision_refs.iter().any(|source|source==&reviewed.source_revision_ref) {
+        return Err("reviewed evidence is not grounded in an acquisition-parent source revision".into());
+    }
+    if !authorization.included_refs.contains(&reviewed.source_revision_ref) {
+        return Err("reviewed-evidence source revision is excluded by MatterContext".into());
+    }
+    project_review_authority_context(&authorization.matter_ref,ReviewAuthorityProjectionInput{
+        case_ref:case.case_ref,
+        matter_ref:case.matter_ref,
+        reviewed_evidence_ref:reviewed.reviewed_evidence_ref,
+        review_receipt_ref:reviewed.review_receipt_ref,
+        consumer_ref:reviewed.consumer_ref,
+        requirement_ref:reviewed.requirement_ref,
+        evidence_role_ref:reviewed.evidence_role_ref,
+        normative_order_ref:reviewed.normative_order_ref,
+        proposition_ref:reviewed.proposition_ref,
+        source_revision_ref:reviewed.source_revision_ref,
+        exact_span_ref:reviewed.exact_span_ref,
+        candidate_only:reviewed.candidate_only,
+        creates_semantic_authority:reviewed.creates_semantic_authority,
+        applicability_promoted:reviewed.applicability_promoted,
+        claim_truth_promoted:reviewed.claim_truth_promoted,
+    }).map(Some)
+}
+
 pub fn load_investigation_queue(
     obligation_ref:&str,
 )->Result<InvestigationQueueWorkspace,String>{
@@ -160,8 +309,9 @@ pub fn load_investigation_queue(
         }
     }
     let graph=load_bound_graph(&config,&queue,&authorization)?;
+    let reviewed_evidence=load_review_authority(&config,&queue,&authorization,graph.as_ref())?;
     Ok(InvestigationQueueWorkspace{
-        queue,governance,graph,matter_ref:authorization.matter_ref,
+        queue,governance,graph,reviewed_evidence,matter_ref:authorization.matter_ref,
         creates_semantic_authority:false,
         acquisition_executed:false,
     })
