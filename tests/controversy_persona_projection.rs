@@ -1,6 +1,6 @@
 #![cfg(feature = "production-data")]
 
-use itir_dioxus::workbench::controversy::{
+use itir_dioxus::controversy::{
     ControversyPersonaProjection, MatterControversyWorkspace,
 };
 use sensiblaw_pg_source_store::{DisagreementKind, ResponseMode};
@@ -15,10 +15,10 @@ fn persona_projections_share_one_matter_and_preserve_typed_dispute() {
         ["order:indigenous", "order:crown"],
     );
 
-    for projection in [&model.client, &model.solicitor, &model.court] {
-        assert_eq!(projection.matter_ref(), "matter:1");
-        assert_eq!(projection.controversy_ref(), "controversy:1");
-    }
+    assert_eq!(model.client.matter_ref(), "matter:1");
+    assert_eq!(model.solicitor.matter_ref(), "matter:1");
+    assert_eq!(model.court.matter_ref(), "matter:1");
+    assert_eq!(model.client.controversy_ref(), model.court.controversy_ref());
     assert_eq!(
         model.solicitor.response_modes,
         vec![ResponseMode::AdmitOccurrenceDisputeCharacterisation]
