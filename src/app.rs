@@ -53,5 +53,33 @@ pub fn app() -> Element {
         };
     }
 
+    #[cfg(feature = "production-data")]
+    if let Ok(scope_path) = std::env::var("SENSIBLAW_MATTER_SCOPE") {
+        return match crate::workbench::matter_scope::load_matter_scope_manifest(&scope_path)
+            .and_then(crate::workbench::matter::load_generic_matter_workspace)
+        {
+            Ok(model) => {
+                let controversy = model.controversy.clone();
+                rsx! {
+                    document::Title { "SensibLaw Matter" }
+                    main {
+                        style: "font-family:sans-serif;max-width:1200px;margin:0 auto;padding:1.5rem;",
+                        crate::controversy_ui::MatterControversyWorkspaceView { model: controversy }
+                        crate::matter_ui::GenericMatterWorkspaceView { model }
+                    }
+                }
+            },
+            Err(error) => rsx! {
+                document::Title { "SensibLaw Matter unavailable" }
+                main {
+                    style: "font-family:sans-serif;max-width:1000px;margin:0 auto;padding:2rem;",
+                    h1 { "Matter unavailable" }
+                    p { "{error}" }
+                    p { "No controversy, review state or adjudicative conclusion is fabricated when persisted Matter state cannot be reopened." }
+                }
+            },
+        };
+    }
+
     legacy::app()
 }

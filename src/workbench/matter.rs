@@ -17,6 +17,7 @@ use sensiblaw_reader_model::{
 };
 
 use super::{
+    controversy::{load_matter_controversy_workspace, MatterControversyWorkspace},
     event_discovery::load_production_event_discovery_workspace,
     operational_timeline::load_production_operational_timeline,
     review::load_production_review_workspace,
@@ -44,6 +45,7 @@ pub struct GenericMatterRequest {
 pub struct GenericMatterWorkspace {
     pub projection: MatterWorkspaceProjection,
     pub acceptance: MatterAcceptanceReceipt,
+    pub controversy: MatterControversyWorkspace,
     pub event_refs: Vec<String>,
     pub operational_dates: Vec<String>,
 }
@@ -68,7 +70,6 @@ pub fn load_generic_matter_workspace(
     event_refs.dedup();
 
     let timeline = load_production_timeline(&event_refs)?;
-
     let source_traces = timeline
         .traces_by_event
         .values()
@@ -79,6 +80,7 @@ pub fn load_generic_matter_workspace(
     let join_proposals = load_production_event_discovery_workspace()?.projection;
     let review_queue = load_production_review_workspace()?.queue;
     let config = load_database_config(None).map_err(|error| error.to_string())?;
+    let controversy = load_matter_controversy_workspace(&request.matter_ref)?;
 
     let mut operational_dates = request
         .operational_dates
@@ -171,13 +173,18 @@ pub fn load_generic_matter_workspace(
     if acceptance.creates_semantic_authority
         || acceptance.claim_truth_promoted
         || acceptance.canonical_world_mutated
+        || controversy.creates_semantic_authority
+        || controversy.claim_truth_promoted
+        || controversy.canonical_world_mutated
+        || controversy.matter_ref != projection.matter_ref
     {
-        return Err("Matter acceptance receipt crossed semantic boundary".into());
+        return Err("Matter acceptance/controversy projection crossed semantic boundary".into());
     }
 
     Ok(GenericMatterWorkspace {
         projection,
         acceptance,
+        controversy,
         event_refs,
         operational_dates,
     })

@@ -4,3 +4,5 @@ pub mod workbench;
 
 #[cfg(feature = "production-data")]
 pub mod matter_ui;
+#[cfg(feature = "production-data")]
+pub mod controversy_ui;

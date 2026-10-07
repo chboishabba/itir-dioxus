@@ -11,6 +11,8 @@ pub mod gwb_matter;
 #[cfg(feature = "production-data")]
 pub mod matter;
 #[cfg(feature = "production-data")]
+pub mod controversy;
+#[cfg(feature = "production-data")]
 pub mod matter_scope;
 #[cfg(feature = "production-data")]
 pub mod work_product_coverage;
