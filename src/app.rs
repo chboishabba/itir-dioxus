@@ -10,7 +10,50 @@ pub use legacy::ReviewWorkspaceView;
 #[path = "investigation_ui_v2.rs"]
 mod investigation_ui;
 
+#[cfg(feature = "production-data")]
+#[path = "controversy_ui.rs"]
+mod controversy_ui;
+
 pub fn app() -> Element {
+    #[cfg(feature = "production-data")]
+    if let Ok(controversy_ref) = std::env::var("ITIR_CONTROVERSY_REF") {
+        let matter_ref = match std::env::var("ITIR_MATTER_REF") {
+            Ok(value) if !value.trim().is_empty() => value,
+            _ => {
+                return rsx! {
+                    document::Title { "ITIR controversy unavailable" }
+                    main {
+                        style: "font-family:sans-serif;max-width:1000px;margin:0 auto;padding:2rem;",
+                        h1 { "Matter controversy unavailable" }
+                        p { "ITIR_MATTER_REF is required whenever ITIR_CONTROVERSY_REF is selected." }
+                        p { "No controversy is guessed and no first-match Matter is selected." }
+                    }
+                };
+            }
+        };
+        return match crate::controversy::load_persisted_controversy_workspace(
+            &controversy_ref,
+            &matter_ref,
+        ) {
+            Ok(model) => rsx! {
+                document::Title { "ITIR Matter Controversy" }
+                main {
+                    style: "font-family:sans-serif;max-width:1200px;margin:0 auto;padding:1.5rem;",
+                    controversy_ui::MatterControversyView { model }
+                }
+            },
+            Err(error) => rsx! {
+                document::Title { "ITIR controversy unavailable" }
+                main {
+                    style: "font-family:sans-serif;max-width:1000px;margin:0 auto;padding:2rem;",
+                    h1 { "Matter controversy unavailable" }
+                    p { "{error}" }
+                    p { "No source, review state, common ground, or adjudicative conclusion is fabricated." }
+                }
+            },
+        };
+    }
+
     #[cfg(feature = "production-data")]
     if let Ok(reference) = std::env::var("ITIR_INV_ACQUISITION_REF") {
         return match crate::workbench::investigation::load_investigation_queue(&reference) {
