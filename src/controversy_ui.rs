@@ -2,7 +2,8 @@
 
 use dioxus::prelude::*;
 use sensiblaw_pg_source_store::{
-    MatterControversyDraft, MatterEpistemicStatus, MatterPartyRole, MatterResponseMode,
+    MatterControversyDraft, MatterDisagreementKind, MatterEpistemicStatus,
+    MatterPartyRole, MatterResponseMode,
 };
 
 use crate::workbench::controversy::MatterControversyWorkspace;
@@ -156,7 +157,7 @@ pub fn MatterControversyWorkspaceView(model: MatterControversyWorkspace) -> Elem
                                         h4 { "Unresolved controversy" }
                                         for residual in entry.controversy.residuals.iter() {
                                             article { style: "border-left:3px solid #999;padding:.45rem .7rem;margin:.45rem 0;",
-                                                strong { "{format!("{:?}", residual.kind)}" }
+                                                strong { "{disagreement_label(residual.kind)}" }
                                                 div { "{residual.unresolved_question}" }
                                                 div { style: "font-size:.82rem;opacity:.72;", "Applicant side: {proposition_text(&entry.controversy, &residual.applicant_proposition_ref)}" }
                                                 div { style: "font-size:.82rem;opacity:.72;", "Respondent side: {proposition_text(&entry.controversy, &residual.respondent_proposition_ref)}" }
@@ -271,5 +272,16 @@ fn response_mode_label(value: MatterResponseMode) -> &'static str {
         MatterResponseMode::ChallengeEvidenceReliability => "Challenges evidence reliability",
         MatterResponseMode::OfferAlternativeEvent => "Offers alternative event / account",
         MatterResponseMode::AdmitProposition => "Admits proposition",
+    }
+}
+
+fn disagreement_label(value: MatterDisagreementKind) -> &'static str {
+    match value {
+        MatterDisagreementKind::Node => "Disputed occurrence / proposition node",
+        MatterDisagreementKind::Relation => "Disputed relation",
+        MatterDisagreementKind::Evidence => "Disputed evidence / reliability",
+        MatterDisagreementKind::Characterisation => "Disputed characterisation",
+        MatterDisagreementKind::Causal => "Disputed causation",
+        MatterDisagreementKind::LegalConsequence => "Disputed legal consequence",
     }
 }
