@@ -41,6 +41,10 @@ pub fn MatterControversyWorkspaceView(model: MatterControversyWorkspace) -> Elem
                 for entry in model.entries.iter() {
                     article {
                         style: "border-top:1px solid #ccc;padding-top:.9rem;margin-top:.9rem;overflow-wrap:anywhere;",
+                        div { style: "font-size:.84rem;font-weight:600;", "Stage: {entry.controversy.stage_ref}" }
+                        if let Some(previous) = entry.controversy.supersedes_controversy_ref.as_ref() {
+                            div { style: "font-size:.8rem;opacity:.72;", "Supersedes persisted snapshot: {previous}" }
+                        }
                         details {
                             summary { "Persisted controversy coordinates" }
                             div { strong { "Controversy: " } "{entry.personas.controversy_ref}" }
@@ -56,6 +60,7 @@ pub fn MatterControversyWorkspaceView(model: MatterControversyWorkspace) -> Elem
                                         party: party_label(proposition.party),
                                         status: status_label(proposition.epistemic_status),
                                         normative_order_ref: proposition.normative_order_ref.clone(),
+                                        relation_ref: proposition.relation_ref.clone(),
                                         source_ref: proposition.source_ref.clone(),
                                         review_ref: proposition.reviewed_evidence_ref.clone(),
                                     }
@@ -91,6 +96,10 @@ pub fn MatterControversyWorkspaceView(model: MatterControversyWorkspace) -> Elem
                             },
                             ControversyPersona::Solicitor => rsx! {
                                 h3 { "What case do I have, and what would reduce the controversy?" }
+                                p {
+                                    strong { "Working backwards from: " }
+                                    "{proposition_text(&entry.controversy, &entry.personas.solicitor.reverse_search.target_proposition_ref)}"
+                                }
                                 section {
                                     h4 { "Proposition map" }
                                     for proposition in entry.controversy.propositions.iter() {
@@ -99,6 +108,7 @@ pub fn MatterControversyWorkspaceView(model: MatterControversyWorkspace) -> Elem
                                             party: party_label(proposition.party),
                                             status: status_label(proposition.epistemic_status),
                                             normative_order_ref: proposition.normative_order_ref.clone(),
+                                            relation_ref: proposition.relation_ref.clone(),
                                             source_ref: proposition.source_ref.clone(),
                                             review_ref: proposition.reviewed_evidence_ref.clone(),
                                         }
@@ -144,6 +154,7 @@ pub fn MatterControversyWorkspaceView(model: MatterControversyWorkspace) -> Elem
                             },
                             ControversyPersona::Court => rsx! {
                                 h3 { "What is common ground and what remains contested?" }
+                                p { style: "font-size:.82rem;opacity:.72;", "This is an immutable {entry.controversy.stage_ref} snapshot; prior stages remain separately reopenable." }
                                 if !entry.personas.court.common_ground_proposition_refs.is_empty() {
                                     section {
                                         h4 { "Common ground" }
@@ -192,6 +203,7 @@ fn PropositionCard(
     party: &'static str,
     status: &'static str,
     normative_order_ref: String,
+    relation_ref: String,
     source_ref: String,
     review_ref: Option<String>,
 ) -> Element {
@@ -202,6 +214,7 @@ fn PropositionCard(
             div { style: "font-size:.82rem;", "Normative order: {normative_order_ref}" }
             details {
                 summary { "Source / review provenance" }
+                div { style: "font-size:.82rem;", "Relationship: {relation_ref}" }
                 div { style: "font-size:.82rem;", "Source: {source_ref}" }
                 if let Some(review_ref) = review_ref.as_ref() {
                     div { style: "font-size:.82rem;", "Reviewed evidence: {review_ref}" }
