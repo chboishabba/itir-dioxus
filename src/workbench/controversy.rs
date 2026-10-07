@@ -3,13 +3,19 @@
 use sensiblaw_pg_source_store::{
     load_database_config, load_matter_controversies_for_matter,
     project_matter_personas, project_matter_reverse_proof_search,
-    MatterPersonaProjections, MatterProceduralGoal,
+    MatterControversyDraft, MatterPersonaProjections, MatterProceduralGoal,
 };
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatterControversyWorkspaceEntry {
+    pub controversy: MatterControversyDraft,
+    pub personas: MatterPersonaProjections,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatterControversyWorkspace {
     pub matter_ref: String,
-    pub projections: Vec<MatterPersonaProjections>,
+    pub entries: Vec<MatterControversyWorkspaceEntry>,
     pub creates_semantic_authority: bool,
     pub claim_truth_promoted: bool,
     pub canonical_world_mutated: bool,
@@ -24,7 +30,7 @@ pub fn load_matter_controversy_workspace(
     let config = load_database_config(None).map_err(|error| error.to_string())?;
     let persisted = load_matter_controversies_for_matter(&config, matter_ref)
         .map_err(|error| error.to_string())?;
-    let mut projections = Vec::with_capacity(persisted.len());
+    let mut entries = Vec::with_capacity(persisted.len());
     for packet in persisted {
         if packet.controversy.matter_ref != matter_ref
             || !packet.derived_only
@@ -43,17 +49,21 @@ pub fn load_matter_controversy_workspace(
         let personas = project_matter_personas(&packet.controversy, &reverse)
             .map_err(|error| error.to_string())?;
         if personas.matter_ref != matter_ref
+            || personas.controversy_ref != packet.controversy.controversy_ref
             || personas.creates_semantic_authority
             || personas.claim_truth_promoted
             || personas.canonical_world_mutated
         {
             return Err("controversy persona projection crossed Matter boundary".into());
         }
-        projections.push(personas);
+        entries.push(MatterControversyWorkspaceEntry {
+            controversy: packet.controversy,
+            personas,
+        });
     }
     Ok(MatterControversyWorkspace {
         matter_ref: matter_ref.to_owned(),
-        projections,
+        entries,
         creates_semantic_authority: false,
         claim_truth_promoted: false,
         canonical_world_mutated: false,
@@ -68,7 +78,7 @@ mod tests {
     fn workspace_type_is_read_only_and_same_matter_scoped() {
         let workspace = MatterControversyWorkspace {
             matter_ref: "matter:test".into(),
-            projections: vec![],
+            entries: vec![],
             creates_semantic_authority: false,
             claim_truth_promoted: false,
             canonical_world_mutated: false,
