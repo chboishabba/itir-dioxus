@@ -15,6 +15,36 @@ mod investigation_ui;
 mod controversy_ui;
 
 pub fn app() -> Element {
+    // A scoped Matter is the composition root. Specialist selectors remain
+    // useful as compatibility/deep-link entry points only when no Matter scope
+    // is active; they must not steal focus from the unified world.
+    #[cfg(feature = "production-data")]
+    if let Ok(scope_path) = std::env::var("SENSIBLAW_MATTER_SCOPE") {
+        let loaded = crate::workbench::matter_scope::load_matter_scope_manifest(&scope_path)
+            .and_then(crate::workbench::matter::load_generic_matter_workspace);
+        return match loaded {
+            Ok(model) => rsx! {
+                document::Title { "SensibLaw Matter" }
+                main {
+                    style: "font-family: sans-serif; max-width: 1180px; margin: 0 auto; padding: 2rem;",
+                    crate::matter_ui::GenericMatterWorkspaceView { model }
+                }
+            },
+            Err(error) => rsx! {
+                document::Title { "SensibLaw Matter · load error" }
+                main {
+                    style: "font-family: sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem;",
+                    h1 { "Matter could not be opened" }
+                    p { "{error}" }
+                    p {
+                        style: "font-size: 0.85rem; opacity: 0.75;",
+                        "The existing canonical world is unchanged. Fix the explicit scope/context or persisted-data receipt and reload."
+                    }
+                }
+            },
+        };
+    }
+
     #[cfg(feature = "production-data")]
     if let Ok(controversy_ref) = std::env::var("ITIR_CONTROVERSY_REF") {
         let matter_ref = match std::env::var("ITIR_MATTER_REF") {
