@@ -4,6 +4,8 @@ This tranche treats controversy, proof obligations, investigation, reviewed evid
 
 Normal product entry remains `SENSIBLAW_MATTER_SCOPE`. A scope may now carry persisted `controversy_refs`; the Generic Matter loader reopens each controversy under the same `matter_ref` and, for every open proof obligation, reopens any controversy-owned investigation/evidence/reassessment history from SLR.
 
+A named controversy is still subject to the ordinary `MatterContext` projection. The same semantic ref must be present in the scope's visibility coordinates and survive matter, role, purpose, knowledge-cut, sealing and minimum-necessary checks. Naming a controversy in `controversy_refs` is not an authorization bypass; excluded controversies remain unrendered and exclusion does not mean absence or falsity.
+
 The visible closure surface keeps these distinctions explicit:
 
 - typed disagreement is not Boolean negation;
