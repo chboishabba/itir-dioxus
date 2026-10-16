@@ -6,7 +6,8 @@ use sensiblaw_core::matter_context::{
     ContextProjectionCoordinate, MatterContext,
 };
 use sensiblaw_pg_source_store::{
-    load_database_config, load_operational_outstanding_for_date,
+    load_controversy_investigation_status, load_database_config,
+    load_operational_outstanding_for_date, ControversyInvestigationStatus,
 };
 use sensiblaw_reader_model::{
     project_matter_acceptance, project_matter_workspace,
@@ -14,6 +15,10 @@ use sensiblaw_reader_model::{
     MatterAcceptanceInput, MatterAcceptanceReceipt,
     MatterAcceptanceRoleCoordinate, MatterWorkspaceInput,
     MatterWorkspaceProjection, OperationalTimelineProjection,
+};
+
+use crate::controversy::{
+    load_persisted_controversy_workspace, MatterControversyWorkspace,
 };
 
 use super::{
@@ -28,6 +33,7 @@ pub struct GenericMatterRequest {
     pub matter_ref: String,
     pub event_refs: Vec<String>,
     pub operational_dates: Vec<String>,
+    pub controversy_refs: Vec<String>,
     pub context: MatterContext,
     pub context_coordinates: Vec<ContextProjectionCoordinate>,
     pub knowledge_timeline: Vec<KnowledgeTimelineEntry>,
@@ -46,6 +52,12 @@ pub struct GenericMatterWorkspace {
     pub acceptance: MatterAcceptanceReceipt,
     pub event_refs: Vec<String>,
     pub operational_dates: Vec<String>,
+    /// Persisted controversy objects are part of the Matter world, not a
+    /// second application state.
+    pub controversies: Vec<MatterControversyWorkspace>,
+    /// Investigation/review/reopening state is projected back onto the exact
+    /// open proof obligation that owns it.
+    pub controversy_investigations: Vec<ControversyInvestigationStatus>,
 }
 
 pub fn load_generic_matter_workspace(
@@ -57,6 +69,55 @@ pub fn load_generic_matter_workspace(
     if request.context.matter_ref != request.matter_ref {
         return Err("MatterContext matter_ref does not match request".into());
     }
+
+    let config = load_database_config(None).map_err(|error| error.to_string())?;
+
+    let mut controversy_refs = request
+        .controversy_refs
+        .iter()
+        .filter(|value| !value.trim().is_empty())
+        .cloned()
+        .collect::<Vec<_>>();
+    controversy_refs.sort();
+    controversy_refs.dedup();
+
+    let mut controversies = Vec::new();
+    let mut controversy_investigations = Vec::new();
+    for controversy_ref in &controversy_refs {
+        let workspace = load_persisted_controversy_workspace(
+            controversy_ref,
+            &request.matter_ref,
+        )?;
+        for obligation in workspace.obligations.iter().filter(|obligation| obligation.is_open) {
+            if let Some(status) = load_controversy_investigation_status(
+                &config,
+                controversy_ref,
+                &obligation.obligation_ref,
+            )
+            .map_err(|error| error.to_string())?
+            {
+                if status.matter_ref != request.matter_ref
+                    || status.controversy_ref != *controversy_ref
+                    || status.legal_obligation_ref != obligation.obligation_ref
+                    || status.creates_semantic_authority
+                    || status.creates_legal_authority
+                    || status.residual_resolved_by_system
+                {
+                    return Err(
+                        "controversy investigation projection crossed Matter/authority boundary"
+                            .into(),
+                    );
+                }
+                controversy_investigations.push(status);
+            }
+        }
+        controversies.push(workspace);
+    }
+    controversy_investigations.sort_by(|left, right| {
+        left.controversy_ref
+            .cmp(&right.controversy_ref)
+            .then_with(|| left.legal_obligation_ref.cmp(&right.legal_obligation_ref))
+    });
 
     let mut event_refs = request
         .event_refs
@@ -78,7 +139,6 @@ pub fn load_generic_matter_workspace(
 
     let join_proposals = load_production_event_discovery_workspace()?.projection;
     let review_queue = load_production_review_workspace()?.queue;
-    let config = load_database_config(None).map_err(|error| error.to_string())?;
 
     let mut operational_dates = request
         .operational_dates
@@ -180,6 +240,8 @@ pub fn load_generic_matter_workspace(
         acceptance,
         event_refs,
         operational_dates,
+        controversies,
+        controversy_investigations,
     })
 }
 
@@ -196,6 +258,7 @@ mod tests {
             matter_ref: "matter:a".into(),
             event_refs: vec![],
             operational_dates: vec![],
+            controversy_refs: vec![],
             context: MatterContext {
                 matter_ref: "matter:b".into(),
                 purpose_ref: MatterPurpose::PersonalReview,
