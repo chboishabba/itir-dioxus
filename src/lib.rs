@@ -8,3 +8,6 @@ pub mod controversy;
 
 #[cfg(feature = "production-data")]
 pub mod matter_ui;
+
+#[cfg(feature = "production-data")]
+pub mod matter_closure_ui;
