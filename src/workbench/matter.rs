@@ -3,18 +3,17 @@
 use std::collections::BTreeSet;
 
 use sensiblaw_core::matter_context::{
-    ContextProjectionCoordinate, MatterContext,
+    project_matter_context, ContextProjectionCoordinate, MatterContext,
 };
 use sensiblaw_pg_source_store::{
     load_controversy_investigation_status, load_database_config,
     load_operational_outstanding_for_date, ControversyInvestigationStatus,
 };
 use sensiblaw_reader_model::{
-    project_matter_acceptance, project_matter_workspace,
-    project_operational_outstanding, KnowledgeTimelineEntry,
-    MatterAcceptanceInput, MatterAcceptanceReceipt,
-    MatterAcceptanceRoleCoordinate, MatterWorkspaceInput,
-    MatterWorkspaceProjection, OperationalTimelineProjection,
+    project_matter_acceptance, project_matter_workspace, project_operational_outstanding,
+    KnowledgeTimelineEntry, MatterAcceptanceInput, MatterAcceptanceReceipt,
+    MatterAcceptanceRoleCoordinate, MatterWorkspaceInput, MatterWorkspaceProjection,
+    OperationalTimelineProjection,
 };
 
 use crate::controversy::{
@@ -70,12 +69,24 @@ pub fn load_generic_matter_workspace(
         return Err("MatterContext matter_ref does not match request".into());
     }
 
+    // Controversy/investigation is part of the same projection boundary as the
+    // existing Matter panels. An explicitly named controversy is not enough to
+    // bypass role, purpose, knowledge-cut, sealing or minimum-necessary scope.
+    let context_preview = project_matter_context(&request.context, &request.context_coordinates)
+        .map_err(|error| format!("{error:?}"))?;
+    let visible_refs = context_preview
+        .included_refs
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+
     let config = load_database_config(None).map_err(|error| error.to_string())?;
 
     let mut controversy_refs = request
         .controversy_refs
         .iter()
         .filter(|value| !value.trim().is_empty())
+        .filter(|value| visible_refs.contains(value.as_str()))
         .cloned()
         .collect::<Vec<_>>();
     controversy_refs.sort();
@@ -84,11 +95,13 @@ pub fn load_generic_matter_workspace(
     let mut controversies = Vec::new();
     let mut controversy_investigations = Vec::new();
     for controversy_ref in &controversy_refs {
-        let workspace = load_persisted_controversy_workspace(
-            controversy_ref,
-            &request.matter_ref,
-        )?;
-        for obligation in workspace.obligations.iter().filter(|obligation| obligation.is_open) {
+        let workspace =
+            load_persisted_controversy_workspace(controversy_ref, &request.matter_ref)?;
+        for obligation in workspace
+            .obligations
+            .iter()
+            .filter(|obligation| obligation.is_open)
+        {
             if let Some(status) = load_controversy_investigation_status(
                 &config,
                 controversy_ref,
@@ -188,9 +201,8 @@ pub fn load_generic_matter_workspace(
                 .map_err(|error| error.to_string())?,
         );
     }
-    let operational_outstanding =
-        project_operational_outstanding(&operational_outstanding_states)
-            .map_err(|error| format!("{error:?}"))?;
+    let operational_outstanding = project_operational_outstanding(&operational_outstanding_states)
+        .map_err(|error| format!("{error:?}"))?;
 
     let input = MatterWorkspaceInput {
         matter_ref: request.matter_ref.clone(),
@@ -223,8 +235,7 @@ pub fn load_generic_matter_workspace(
         workspace: projection.clone(),
         no_event_refs: request.no_event_refs,
         role_coordinates: request.acceptance_roles,
-        procedural_significance_review_refs:
-            request.procedural_significance_review_refs,
+        procedural_significance_review_refs: request.procedural_significance_review_refs,
     })
     .map_err(|error| format!("{error:?}"))?;
 
