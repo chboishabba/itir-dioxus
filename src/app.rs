@@ -27,6 +27,7 @@ pub fn app() -> Element {
                 document::Title { "SensibLaw Matter" }
                 main {
                     style: "font-family: sans-serif; max-width: 1180px; margin: 0 auto; padding: 2rem;",
+                    crate::matter_closure_ui::MatterClosureView { model: model.clone() }
                     crate::matter_ui::GenericMatterWorkspaceView { model }
                 }
             },
