@@ -59,6 +59,35 @@ pub struct GenericMatterWorkspace {
     pub controversy_investigations: Vec<ControversyInvestigationStatus>,
 }
 
+/// Apply the ordinary MatterContext firewall to explicitly requested
+/// controversy coordinates before any persisted controversy row is opened.
+///
+/// Naming a controversy is navigation state, not authorization. Hidden or
+/// excluded coordinates are simply omitted from this projection; they are not
+/// treated as absent or false in the canonical world.
+pub fn visible_controversy_refs(
+    requested_refs: &[String],
+    context: &MatterContext,
+    coordinates: &[ContextProjectionCoordinate],
+) -> Result<Vec<String>, String> {
+    let projection =
+        project_matter_context(context, coordinates).map_err(|error| format!("{error:?}"))?;
+    let visible = projection
+        .included_refs
+        .iter()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    let mut refs = requested_refs
+        .iter()
+        .filter(|value| !value.trim().is_empty())
+        .filter(|value| visible.contains(value.as_str()))
+        .cloned()
+        .collect::<Vec<_>>();
+    refs.sort();
+    refs.dedup();
+    Ok(refs)
+}
+
 pub fn load_generic_matter_workspace(
     request: GenericMatterRequest,
 ) -> Result<GenericMatterWorkspace, String> {
@@ -69,28 +98,13 @@ pub fn load_generic_matter_workspace(
         return Err("MatterContext matter_ref does not match request".into());
     }
 
-    // Controversy/investigation is part of the same projection boundary as the
-    // existing Matter panels. An explicitly named controversy is not enough to
-    // bypass role, purpose, knowledge-cut, sealing or minimum-necessary scope.
-    let context_preview = project_matter_context(&request.context, &request.context_coordinates)
-        .map_err(|error| format!("{error:?}"))?;
-    let visible_refs = context_preview
-        .included_refs
-        .iter()
-        .cloned()
-        .collect::<BTreeSet<_>>();
+    let controversy_refs = visible_controversy_refs(
+        &request.controversy_refs,
+        &request.context,
+        &request.context_coordinates,
+    )?;
 
     let config = load_database_config(None).map_err(|error| error.to_string())?;
-
-    let mut controversy_refs = request
-        .controversy_refs
-        .iter()
-        .filter(|value| !value.trim().is_empty())
-        .filter(|value| visible_refs.contains(value.as_str()))
-        .cloned()
-        .collect::<Vec<_>>();
-    controversy_refs.sort();
-    controversy_refs.dedup();
 
     let mut controversies = Vec::new();
     let mut controversy_investigations = Vec::new();
@@ -260,8 +274,53 @@ pub fn load_generic_matter_workspace(
 mod tests {
     use super::*;
     use sensiblaw_core::matter_context::{
-        DisclosureBoundary, MatterConsumerRole, MatterPurpose,
+        DisclosureBoundary, KnowledgeCutMembership, MatterConsumerRole, MatterPurpose,
     };
+
+    fn test_context() -> MatterContext {
+        MatterContext {
+            matter_ref: "matter:a".into(),
+            purpose_ref: MatterPurpose::LegalAdvocacy,
+            active_consumer_role: MatterConsumerRole::Lawyer,
+            disclosure_boundary: DisclosureBoundary::RoleScoped,
+            knowledge_time_cut_ref: Some("cut:now".into()),
+            sealed_refs: vec![],
+            minimum_necessary: true,
+            purpose_limited: true,
+            access_logged: true,
+            revocable: true,
+            mutates_canonical_world: false,
+            creates_semantic_authority: false,
+            claim_truth_promoted: false,
+        }
+    }
+
+    fn controversy_coordinate(reference: &str) -> ContextProjectionCoordinate {
+        ContextProjectionCoordinate {
+            semantic_ref: reference.into(),
+            matter_ref: "matter:a".into(),
+            allowed_roles: vec![MatterConsumerRole::Lawyer],
+            allowed_purposes: vec![MatterPurpose::LegalAdvocacy],
+            knowledge_membership: KnowledgeCutMembership::KnownAtCut,
+            explicitly_selected: true,
+            sealed: false,
+        }
+    }
+
+    #[test]
+    fn named_but_hidden_controversy_is_not_opened() {
+        let requested = vec!["controversy:visible".into(), "controversy:hidden".into()];
+        let mut hidden = controversy_coordinate("controversy:hidden");
+        hidden.explicitly_selected = false;
+        let refs = visible_controversy_refs(
+            &requested,
+            &test_context(),
+            &[controversy_coordinate("controversy:visible"), hidden],
+        )
+        .expect("context projection is valid");
+
+        assert_eq!(refs, vec!["controversy:visible"]);
+    }
 
     #[test]
     fn request_rejects_context_for_a_different_matter_before_database_access() {
