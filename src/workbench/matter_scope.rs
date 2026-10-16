@@ -24,6 +24,11 @@ pub struct MatterScopeManifest {
     pub event_refs: Vec<String>,
     #[serde(default)]
     pub operational_dates: Vec<String>,
+    /// Persisted controversies that belong to this Matter. These are not
+    /// separate workflow selectors: they are coordinates to project inside the
+    /// same Matter world.
+    #[serde(default)]
+    pub controversy_refs: Vec<String>,
     pub context: MatterScopeContext,
     #[serde(default)]
     pub visibility: Vec<MatterScopeVisibility>,
@@ -205,6 +210,7 @@ impl MatterScopeManifest {
             matter_ref: self.matter_ref,
             event_refs: self.event_refs,
             operational_dates: self.operational_dates,
+            controversy_refs: self.controversy_refs,
             context,
             context_coordinates,
             knowledge_timeline,
@@ -293,13 +299,13 @@ fn parse_knowledge_membership(
 mod tests {
     use super::*;
 
-    #[test]
-    fn manifest_requires_explicit_known_after_cut_instead_of_inference() {
-        let manifest = MatterScopeManifest {
+    fn base_manifest() -> MatterScopeManifest {
+        MatterScopeManifest {
             schema: MATTER_SCOPE_SCHEMA.into(),
             matter_ref: "matter:1".into(),
             event_refs: vec![],
             operational_dates: vec![],
+            controversy_refs: vec!["controversy:1".into()],
             context: MatterScopeContext {
                 purpose: "legal-advocacy".into(),
                 role: "lawyer".into(),
@@ -307,14 +313,7 @@ mod tests {
                 knowledge_time_cut_ref: Some("cut:1".into()),
                 sealed_refs: vec![],
             },
-            visibility: vec![MatterScopeVisibility {
-                semantic_ref: "source:later".into(),
-                allowed_roles: vec!["lawyer".into()],
-                allowed_purposes: vec!["legal-advocacy".into()],
-                knowledge_membership: "known-after-cut".into(),
-                explicitly_selected: true,
-                sealed: false,
-            }],
+            visibility: vec![],
             knowledge_timeline: vec![],
             legal_proof_refs: vec![],
             research_refs: vec![],
@@ -323,11 +322,31 @@ mod tests {
             no_event_refs: vec![],
             acceptance_roles: vec![],
             procedural_significance_review_refs: vec![],
-        };
+        }
+    }
+
+    #[test]
+    fn manifest_requires_explicit_known_after_cut_instead_of_inference() {
+        let mut manifest = base_manifest();
+        manifest.visibility = vec![MatterScopeVisibility {
+            semantic_ref: "source:later".into(),
+            allowed_roles: vec!["lawyer".into()],
+            allowed_purposes: vec!["legal-advocacy".into()],
+            knowledge_membership: "known-after-cut".into(),
+            explicitly_selected: true,
+            sealed: false,
+        }];
         let request = manifest.into_request().unwrap();
         assert_eq!(
             request.context_coordinates[0].knowledge_membership,
             KnowledgeCutMembership::KnownAfterCut
         );
+    }
+
+    #[test]
+    fn controversy_coordinates_stay_inside_the_matter_request() {
+        let request = base_manifest().into_request().unwrap();
+        assert_eq!(request.matter_ref, "matter:1");
+        assert_eq!(request.controversy_refs, vec!["controversy:1"]);
     }
 }
