@@ -20,12 +20,14 @@ fn fixture() -> MatterControversyWorkspace {
 fn acceptance_requires_persisted_fibres() {
     let mut workspace = fixture();
     workspace.fibres.clear();
-    assert!(validate_controversy_acceptance_workspace(&workspace).is_err());
+    let error = validate_controversy_acceptance_workspace(&workspace).unwrap_err();
+    assert!(error.contains("fibre"));
 }
 
 #[test]
 fn acceptance_requires_persisted_responses() {
     let mut workspace = fixture();
     workspace.responses.clear();
-    assert!(validate_controversy_acceptance_workspace(&workspace).is_err());
+    let error = validate_controversy_acceptance_workspace(&workspace).unwrap_err();
+    assert!(error.contains("response"));
 }
