@@ -123,3 +123,8 @@ required-features = ["production-data"]
 name = "m10_mixed_source_gpu_receipt"
 path = "examples/m10_mixed_source_gpu_receipt.rs"
 required-features = ["production-data", "gpu"]
+
+[[example]]
+name = "mabo_real_matter_ui_receipt"
+path = "examples/mabo_real_matter_ui_receipt.rs"
+required-features = ["production-data"]
