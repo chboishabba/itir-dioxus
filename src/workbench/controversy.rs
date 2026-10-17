@@ -1,9 +1,10 @@
 #![cfg(feature = "production-data")]
 
 use sensiblaw_pg_source_store::{
-    load_database_config, load_legal_controversy_matter, load_legal_controversy_residual,
-    load_legal_proof_obligation, load_legal_proposition_fibre, load_typed_response_edge,
-    DisagreementKind, EpistemicStatus, LegalControversyMatter, LegalControversyResidual,
+    load_current_legal_controversy_matter, load_database_config,
+    load_legal_controversy_residual, load_legal_proof_obligation,
+    load_legal_proposition_fibre, load_typed_response_edge, DisagreementKind,
+    EpistemicStatus, LegalControversyMatter, LegalControversyResidual,
     LegalProofObligation, LegalPropositionFibre, ResponseMode, ReverseLegalProofSearch,
     TypedResponseEdge,
 };
@@ -190,7 +191,12 @@ pub fn load_persisted_controversy_workspace(
         return Err("controversy_ref and expected matter_ref are required".into());
     }
     let config = load_database_config(None).map_err(|error| error.to_string())?;
-    let matter = load_legal_controversy_matter(&config, controversy_ref).map_err(|error| error.to_string())?;
+    // Operator personas consume the reviewed current projection. Historical
+    // residuals remain reopenable through SLR's audit loader but cannot leak
+    // into client/solicitor/court current meaning merely because they share the
+    // same stable controversy identity.
+    let matter = load_current_legal_controversy_matter(&config, controversy_ref)
+        .map_err(|error| error.to_string())?;
     if matter.matter_ref != expected_matter_ref {
         return Err("persisted controversy belongs to a different Matter".into());
     }
