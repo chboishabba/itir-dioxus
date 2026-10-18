@@ -59,7 +59,7 @@ pub fn InvestigationAcquisitionView(model: InvestigationQueueWorkspace) -> Eleme
             } else if active_mode == InvestigationMode::Inspect {
                 InspectView { view: view.clone() }
             } else {
-                InvestigationGraphView { graph: model.graph.clone(), view: view.clone() }
+                InvestigationGraphView { graph: model.graph.clone(), view: Some(view.clone()) }
             }
 
             footer {
@@ -263,7 +263,7 @@ fn InspectView(view: InvestigationProjection) -> Element {
 }
 
 #[component]
-fn InvestigationGraphView(graph: Option<InvestigationGraphProjection>, view: InvestigationProjection) -> Element {
+pub fn InvestigationGraphView(graph: Option<InvestigationGraphProjection>, view: Option<InvestigationProjection>) -> Element {
     let mut selected = use_signal(|| None::<VisualObjectId>);
     let Some(persisted) = graph else {
         return rsx! {
@@ -275,7 +275,9 @@ fn InvestigationGraphView(graph: Option<InvestigationGraphProjection>, view: Inv
                     p { "Graph mode will not synthesize topology from journal, route, or dependency references." }
                     p { "Persist and review a legal/proof graph, then bind it to this INV obligation with an explicit binding receipt." }
                 }
-                CounterfactualCoordinates { view }
+                if let Some(view) = view {
+                    CounterfactualCoordinates { view }
+                }
             }
         };
     };

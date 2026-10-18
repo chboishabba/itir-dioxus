@@ -139,6 +139,91 @@ fn load_bound_graph(
     }))
 }
 
+/// Reopen Mabo's legal proof graph through the SAME persisted binding and
+/// pnf_follow legal-follow loader used by investigation GraphIr. A legal proof
+/// obligation is not an INV relational-acquisition obligation; do not synthesize
+/// a comparison or route to make it fit the old acquisition entry point.
+/// Absence stays None, and hidden MatterContext sources fail closed.
+pub fn load_mabo_legal_proof_graph(
+    controversy_ref: &str,
+    legal_obligation_ref: &str,
+) -> Result<Option<InvestigationGraphProjection>, String> {
+    if controversy_ref != sensiblaw_pg_source_store::MABO_CONTROVERSY_REF
+        || legal_obligation_ref.trim().is_empty() {
+        return Err("not a persisted Mabo legal proof obligation".into());
+    }
+    let config = load_database_config(None).map_err(|e| e.to_string())?;
+    let matter = sensiblaw_pg_source_store::load_legal_controversy_matter(
+        &config, controversy_ref,
+    ).map_err(|e| e.to_string())?;
+    if matter.creates_semantic_authority || matter.creates_legal_authority
+        || matter.applicability_promoted || matter.claim_truth_promoted
+        || !matter.obligation_refs.iter().any(|r| r == legal_obligation_ref) {
+        return Err("Mabo proof graph is not owned by a non-promoting Matter".into());
+    }
+    let manifest = std::env::var("SENSIBLAW_MATTER_SCOPE")
+        .map_err(|_| "SENSIBLAW_MATTER_SCOPE is required".to_owned())?;
+    let request = super::matter_scope::load_matter_scope_manifest(&manifest)?;
+    let visible = sensiblaw_core::matter_context::project_matter_context(
+        &request.context, &request.context_coordinates,
+    ).map_err(|e| format!("{e:?}"))?;
+    if request.matter_ref != matter.matter_ref
+        || visible.canonical_world_mutated || visible.invisibility_means_false {
+        return Err("Mabo graph MatterContext cannot authorize this Matter".into());
+    }
+    let Some(bound) = load_bound_investigation_graph_projection(
+        &config, legal_obligation_ref, &matter.matter_ref,
+    ).map_err(|e| e.to_string())? else {
+        // The graph canvas must not invent topology on a missing binding.
+        return Ok(None);
+    };
+    if bound.binding.obligation_ref != legal_obligation_ref
+        || bound.binding.matter_ref != matter.matter_ref
+        || !bound.binding.derived_only || !bound.binding.challengeable
+        || bound.binding.creates_graph_edges
+        || bound.binding.creates_semantic_authority
+        || bound.binding.creates_access_authority
+        || bound.binding.creates_acquisition_state {
+        return Err("Mabo legal proof graph binding crossed authority boundary".into());
+    }
+    let included = visible.included_refs.into_iter().collect::<BTreeSet<_>>();
+    if bound.projection.source_refs.iter().any(|r| !included.contains(r)) {
+        return Err("Mabo graph includes a source excluded by MatterContext".into());
+    }
+    let graph = bound.projection.legal_follow_graph;
+    if graph.projection_ref != bound.binding.projection_ref
+        || !graph.derived_only || !graph.challengeable
+        || graph.nodes.is_empty() || graph.edges.is_empty()
+        || graph.edges.iter().any(|edge| !edge.challengeable) {
+        return Err("Mabo persisted graph is not a challengeable legal-follow graph".into());
+    }
+    Ok(Some(InvestigationGraphProjection {
+        binding: bound.binding,
+        projection_ref: graph.projection_ref,
+        document_ref: graph.document_ref,
+        nodes: graph.nodes.into_iter().map(|n| InvestigationGraphNode {
+            semantic_ref: n.semantic_ref,
+            kind: n.semantic_kind,
+            label: n.label,
+            source_refs: n.source_refs,
+            provenance_refs: n.provenance_refs,
+        }).collect(),
+        edges: graph.edges.into_iter().map(|e| InvestigationGraphEdge {
+            semantic_ref: e.semantic_ref,
+            from_ref: e.from_ref,
+            to_ref: e.to_ref,
+            relation: e.relation,
+            source_refs: e.source_refs,
+            provenance_refs: e.provenance_refs,
+            challengeable: e.challengeable,
+        }).collect(),
+        derived_only: true,
+        challengeable: true,
+        creates_semantic_authority: false,
+        creates_graph_edges: false,
+    }))
+}
+
 pub fn load_investigation_queue(
     obligation_ref:&str,
 )->Result<InvestigationQueueWorkspace,String>{
@@ -165,4 +250,22 @@ pub fn load_investigation_queue(
         creates_semantic_authority:false,
         acquisition_executed:false,
     })
+}
+
+
+#[cfg(test)]
+mod mabo_legal_binding_tests {
+    use super::*;
+
+    #[test]
+    fn foreign_legal_proof_graph_is_refused_before_database_access() {
+        let foreign = load_mabo_legal_proof_graph(
+            "legal-controversy:foreign", "legal-obligation:existing",
+        );
+        assert!(foreign.is_err());
+        let missing_obligation = load_mabo_legal_proof_graph(
+            sensiblaw_pg_source_store::MABO_CONTROVERSY_REF, "",
+        );
+        assert!(missing_obligation.is_err());
+    }
 }
