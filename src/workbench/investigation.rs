@@ -250,3 +250,21 @@ pub fn load_investigation_queue(
         acquisition_executed:false,
     })
 }
+
+
+#[cfg(test)]
+mod mabo_legal_binding_tests {
+    use super::*;
+
+    #[test]
+    fn foreign_legal_proof_graph_is_refused_before_database_access() {
+        let foreign = load_mabo_legal_proof_graph(
+            "legal-controversy:foreign", "legal-obligation:existing",
+        );
+        assert!(foreign.is_err());
+        let missing_obligation = load_mabo_legal_proof_graph(
+            sensiblaw_pg_source_store::MABO_CONTROVERSY_REF, "",
+        );
+        assert!(missing_obligation.is_err());
+    }
+}
