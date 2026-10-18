@@ -193,7 +193,8 @@ pub fn load_mabo_legal_proof_graph(
     let graph = bound.projection.legal_follow_graph;
     if graph.projection_ref != bound.binding.projection_ref
         || !graph.derived_only || !graph.challengeable
-        || graph.nodes.is_empty() || graph.edges.is_empty() {
+        || graph.nodes.is_empty() || graph.edges.is_empty()
+        || graph.edges.iter().any(|edge| !edge.challengeable) {
         return Err("Mabo persisted graph is not a challengeable legal-follow graph".into());
     }
     Ok(Some(InvestigationGraphProjection {
