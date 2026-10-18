@@ -5224,7 +5224,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-consumer-residual"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-world-store",
  "thiserror 1.0.69",
@@ -5233,17 +5233,17 @@ dependencies = [
 [[package]]
 name = "sensiblaw-core"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 
 [[package]]
 name = "sensiblaw-evidential-reopen"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 
 [[package]]
 name = "sensiblaw-governed-legal-provider"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-legal-follow-plan",
  "serde",
@@ -5256,7 +5256,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-legal-counterfactual"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-semantic-status",
 ]
@@ -5264,7 +5264,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-legal-follow-plan"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-legal-counterfactual",
 ]
@@ -5272,7 +5272,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-legal-runtime"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-consumer-residual",
  "sensiblaw-core",
@@ -5290,7 +5290,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-nsw-legislation-provider"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-governed-legal-provider",
  "sha2 0.10.9",
@@ -5300,7 +5300,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-pg-source-store"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "dotenvy",
  "postgres",
@@ -5315,7 +5315,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-proof-search-loop"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-consumer-residual",
  "sensiblaw-core",
@@ -5339,7 +5339,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-proof-search-scheduler"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-legal-follow-plan",
 ]
@@ -5347,7 +5347,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-reader-model"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-core",
  "serde",
@@ -5357,7 +5357,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-reviewed-evidence-payment"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-consumer-residual",
  "sensiblaw-core",
@@ -5368,7 +5368,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-route-executor"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "scraper",
  "sensiblaw-route-selector",
@@ -5382,7 +5382,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-route-selector"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-world-store",
  "thiserror 1.0.69",
@@ -5391,7 +5391,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-semantic-expansion"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-core",
 ]
@@ -5399,7 +5399,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-semantic-status"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "sensiblaw-core",
  "sensiblaw-semantic-expansion",
@@ -5408,7 +5408,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-wikimedia-candidate-provider"
 version = "0.1.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "quick-xml",
  "sensiblaw-route-selector",
@@ -5421,7 +5421,7 @@ dependencies = [
 [[package]]
 name = "sensiblaw-world-store"
 version = "0.2.0"
-source = "git+https://github.com/chboishabba/slr?rev=9c41abec618199c0a22d6b14d8806d5ec5b0fb2f#9c41abec618199c0a22d6b14d8806d5ec5b0fb2f"
+source = "git+https://github.com/chboishabba/slr?rev=0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5#0ae6b3d8d4c4bb4d94dc397d6e8842cb10f7c2e5"
 dependencies = [
  "dotenvy",
  "postgres",
