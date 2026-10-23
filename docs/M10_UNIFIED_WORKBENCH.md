@@ -259,3 +259,34 @@ payment. Rendering and picking remain proposal/projection mechanisms.
 > SensibLaw → Dioxus semantic ABI. M11 production workbench comparison uses the
 > typed Rust reader/comparative projections directly from PostgreSQL; JSON is
 > retained only for replay/export/offline bundles.
+
+
+## 2026-10-23 addendum — Fleet and Research Trajectory Cockpit (M10/M11)
+
+**Decision:** `itir-dioxus` is the sole new production operator UI host. `itir-svelte` is deprecated and retained only for regression/read-model reference. Reuse existing `UnifiedWorkbenchReadModel`, `VisualisationIr`, `GraphIr`, `ChartIr`, `DomainCommand`, reducer and wgpu pick parity; never build a second canonical graph/store or bypass the SLR admission boundary.
+
+**Operator story:** As a researcher/operator I can open one mission, inspect its AO fleet operations and worker handoffs, follow time-ordered activity and competing proof/experiment attempts, distinguish proposals from formally verified outcomes, then reopen each claim's exact sources and receipts. I can return to the same selection/context without loss. Management actions are explicit governed requests to AO, not observer writes.
+
+**Bounded synchronized views** (one stable primary selection shared by all):
+- **Fleet topology:** AO lane/worker/operation parent-child identities, lifecycle state, claim/heartbeat/report, pending reconciliation, owner and write scope.
+- **Trajectory/timeline:** StatiBaker append-only observer events, canonical thread lineage, exact source timestamps, interrupted/abandoned paths, known-then versus known-later; missing data explicitly unavailable.
+- **Research dependency graph:** obligation, candidate lemma, experiment, counterexample, source, review, proof receipt, PR/commit and their typed relations. Graph always bounded to selected mission; broadening is explicit.
+- **Inspector:** source span/digest, canonical world/revision, operation receipt and state, verification method and exact SHA, open residuals, scope and abstentions. Graph selection cannot promote evidence.
+- **Governed control:** explicit operator request for dispatch, review, reassign, cancellation where supported, or reconcile; first surface only actions verified by the AO tool registry. `async_starting` and `commit_unknown` must be visibly held; never offer blind retry/resend.
+
+**Implementation sequence / acceptance gates**
+1. **P0 inventory:** audit deployed AO/ITIR MCP specs, Dioxus M10/M11 read model, StatiBaker `ao_kanboard_control` runsheet, and SLR proof-search receipts. Document supported/unsupported fields and real production producer versions; no invented live metrics.
+2. **P0 read-only vertical slice:** consume a real bounded mission packet through the existing suite MCP/typed Rust bridge; project stable source-backed `VisualObjectId`s for operation, attempt, proof gap, receipt and source; maintain shell/GPU selection parity. Acceptance: stable IDs across replay; every selected object reopens exact producer-owned source references; explicit missing/blocked state; same reducer state from Dioxus click and GPU pick.
+3. **P0 temporal/reconciliation view:** show operation ledger and chronology from authoritative producer, including uncertain-operation no-resend policy. Acceptance: interruption/restart replay consistency; no fabricated `completed` state; absence differentiated from failure and withheld/redacted evidence.
+4. **P1 management actions:** define an explicit typed command-to-MCP/AO adapter with role/scope checks, explicit user approval and post-action receipt/reconciliation. Acceptance: permission-denied and ambiguous-state cases fail closed; no direct UI/GraphIr semantic mutation.
+5. **P1 proof/experiment overlay:** link SLR candidate-only `proof-search-scheduler` and `proof-search-loop` receipts, exact compiler/version refs and Agda/Lean kernel evidence. Acceptance: proposal, locally tested, reviewed and kernel-checked remain distinct; no proof closure by display alone.
+6. **P2 population experiments:** use Cogentic-inspired independent provers/critics and Self-Harness/MESH-inspired candidate search behind AO policy. Evaluate fixed-model and matched-budget baselines for verified gap reduction, cost, recovery, false promotion and source coverage; no automatic verifier self-approval.
+
+**Non-goals:** reimplement fleet orchestration in Dioxus; general-purpose activity surveillance, worker productivity ranking, unscoped cross-identity fusion, autonomous legal findings or extra canonical semantic stores. Do not replace the AU empirical M10 closure gate described above.
+
+**References and rationale**
+- Local: `itir-dioxus/README.md` (driver-seat/multidimensional matrix and patch influence), `docs/M10_UNIFIED_WORKBENCH.md`; `ITIR-suite/itir-mcp/README.md` (AO and guarded worker lane), `ITIR-suite/docs/planning/governed_revival_handoff_v1.md`; `ITIR-suite/docs/user_stories.md` (ITIR-US-02/10, SL-US-08, UI-INV-03); `StatiBaker/docs/user_stories.md` (SB-SL-US-01/02/03).
+- SLR: `slr/README.md`, `slr/docs/ROADMAP.md` (candidate-only proof search and reviewed admission).
+- External research (design inputs **not** repository implementation receipts): Cai et al., *Cogentic: Multi-Agent Orchestration for Automated Proof Discovery*, https://arxiv.org/abs/2609.40324 (parallel prover/critic and verified ledger); Barbaste et al., *Harness Engineering*, https://arxiv.org/abs/2609.00006 (architecture survey, not benchmark); Zhang et al., *Self-Harness*, https://arxiv.org/abs/2606.09498 (regression-gated harness evolution); Shang et al., *MESH-Harness*, https://arxiv.org/abs/2610.05300 (budget-aware compositional search). External results are author-reported and not evidence of local implementation.
+
+**Status:** roadmap/specification only; no new cockpit runtime, tests or kernel certification claimed by this addendum.
