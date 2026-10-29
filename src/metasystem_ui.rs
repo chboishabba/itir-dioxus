@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use serde::{Deserialize, Serialize};
 use dioxus::router::prelude::*;
 
 use crate::components::{
@@ -18,7 +19,7 @@ pub enum MetasystemRoute {
     Home {},
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub struct MetasystemProjection {
     pub topics: Vec<TopicNode>,
     pub flows: Vec<SankeyFlow>,
@@ -30,6 +31,13 @@ impl Default for MetasystemProjection {
     fn default() -> Self {
         Self { topics: vec![], flows: vec![], project_nodes: vec![], project_edges: vec![] }
     }
+}
+
+pub fn load_projection(path: impl AsRef<std::path::Path>) -> Result<MetasystemProjection, String> {
+    let text = std::fs::read_to_string(path.as_ref())
+        .map_err(|error| format!("metasystem projection read failed: {error}"))?;
+    serde_json::from_str(&text)
+        .map_err(|error| format!("metasystem projection parse failed: {error}"))
 }
 
 #[component]
