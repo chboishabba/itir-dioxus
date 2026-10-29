@@ -84,13 +84,18 @@ fn cross_project_graph_drops_edges_without_supplied_endpoints() {
 }
 
 #[test]
-fn projection_loader_preserves_explicit_empty_model(tmp_path: &std::path::Path) {
-    let path = tmp_path.join("projection.json");
+fn projection_loader_preserves_explicit_empty_model() {
+    let path = std::env::temp_dir().join(format!(
+        "itir-dioxus-metasystem-{}-{}.json",
+        std::process::id(),
+        "empty"
+    ));
     std::fs::write(
         &path,
         r#"{"topics":[],"flows":[],"project_nodes":[],"project_edges":[]}"#,
     )
     .unwrap();
     let model = load_projection(&path).unwrap();
+    std::fs::remove_file(&path).ok();
     assert_eq!(model, MetasystemProjection::default());
 }
