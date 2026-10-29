@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ProjectNode {
     pub node_ref: String,
     pub project_ref: String,
@@ -10,7 +11,7 @@ pub struct ProjectNode {
     pub receipt_ref: Option<String>,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct ProjectEdge {
     pub edge_ref: String,
     pub source_ref: String,
