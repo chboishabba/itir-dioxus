@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct DeliverableReceipt {
     pub label: String,
     pub status: String,
@@ -9,7 +10,7 @@ pub struct DeliverableReceipt {
     pub sequence: u32,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TopicGoal {
     pub goal_ref: String,
     pub label: String,
@@ -18,7 +19,7 @@ pub struct TopicGoal {
     pub deliverables: Vec<DeliverableReceipt>,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct TopicNode {
     pub topic_ref: String,
     pub label: String,
