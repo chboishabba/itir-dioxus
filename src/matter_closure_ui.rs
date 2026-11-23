@@ -3,6 +3,8 @@
 use dioxus::prelude::*;
 
 use crate::workbench::matter::GenericMatterWorkspace;
+use crate::investigation_ui_v2::InvestigationGraphView;
+use crate::workbench::investigation::load_mabo_legal_proof_graph;
 
 #[component]
 pub fn MatterClosureView(model: GenericMatterWorkspace) -> Element {
@@ -140,10 +142,45 @@ pub fn MatterClosureView(model: GenericMatterWorkspace) -> Element {
                             }) {
                                 MatterInvestigationStatusView { status: status.clone() }
                             }
+                            if controversy.matter.controversy_ref == sensiblaw_pg_source_store::MABO_CONTROVERSY_REF
+                                && obligation.is_open {
+                                MaboLegalProofGraphBindingView {
+                                    controversy_ref: controversy.matter.controversy_ref.clone(),
+                                    legal_obligation_ref: obligation.obligation_ref.clone(),
+                                }
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+/// Graph content is reopened through SLR's durable binding and the same
+/// GraphIr renderer used for INV acquisition graphs. No binding means no graph.
+#[component]
+fn MaboLegalProofGraphBindingView(
+    controversy_ref: String,
+    legal_obligation_ref: String,
+) -> Element {
+    let persisted = match load_mabo_legal_proof_graph(
+        &controversy_ref, &legal_obligation_ref,
+    ) {
+        Ok(binding) => binding,
+        Err(reason) => return rsx! {
+            details {
+                summary { "Mabo proof graph: persisted binding refused" }
+                p { "{reason}" }
+                p { "No graph is synthesized and no legal or proof-search state changes." }
+            }
+        },
+    };
+    rsx! {
+        details {
+            style: "margin-top:.65rem;",
+            summary { "Mabo proof-search graph · persisted legal-follow binding" }
+            InvestigationGraphView { graph: persisted, view: None }
         }
     }
 }

@@ -11,3 +11,6 @@ pub mod matter_ui;
 
 #[cfg(feature = "production-data")]
 pub mod matter_closure_ui;
+
+#[cfg(feature = "production-data")]
+pub mod investigation_ui_v2;
