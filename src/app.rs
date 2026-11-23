@@ -15,6 +15,24 @@ mod investigation_ui;
 mod controversy_ui;
 
 pub fn app() -> Element {
+    if let Ok(path) = std::env::var("ITIR_SUBLINEAR_METASYSTEM_PROJECTION") {
+        return match crate::metasystem_ui::load_projection(&path) {
+            Ok(model) => rsx! {
+                document::Title { "ITIR Sublinear Topic Metasystem" }
+                crate::metasystem_ui::MetasystemRouter { model }
+            },
+            Err(error) => rsx! {
+                document::Title { "ITIR metasystem projection unavailable" }
+                main {
+                    style: "font-family:sans-serif;max-width:900px;margin:0 auto;padding:2rem;",
+                    h1 { "Metasystem projection unavailable" }
+                    p { "{error}" }
+                    p { "No topic, proof, worker lane, or cross-project edge is synthesized." }
+                }
+            },
+        };
+    }
+
     // A scoped Matter is the composition root. Specialist selectors remain
     // useful as compatibility/deep-link entry points only when no Matter scope
     // is active; they must not steal focus from the unified world.

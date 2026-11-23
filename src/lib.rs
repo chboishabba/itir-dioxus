@@ -1,3 +1,5 @@
+pub mod components;
+pub mod metasystem_ui;
 pub mod app;
 pub mod visual;
 pub mod workbench;
