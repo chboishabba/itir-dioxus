@@ -7,6 +7,10 @@ pub mod workbench;
 pub mod controversy;
 
 #[cfg(feature = "production-data")]
+#[path = "workbench/controversy_acceptance.rs"]
+pub mod controversy_acceptance;
+
+#[cfg(feature = "production-data")]
 pub mod matter_ui;
 
 #[cfg(feature = "production-data")]
